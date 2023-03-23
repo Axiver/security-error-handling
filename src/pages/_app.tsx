@@ -3,8 +3,11 @@ import type { AppProps, AppType } from "next/app";
 import { SessionProvider } from "next-auth/react";
 import type { Session } from "next-auth";
 import { createTheme, responsiveFontSizes, StyledEngineProvider, ThemeProvider } from "@mui/material";
-import { NextComponentType } from "next";
-import { QueryClient, QueryClientProvider, useQuery } from "react-query";
+import { QueryClient, QueryClientProvider } from "react-query";
+import { useRouter } from "next/router";
+import { useEffect } from "react";
+import SpinnerPage from "@/components/fallbacks/SpinnerPage";
+import AuthenticationGuard from "@/components/auth/AuthenticationGuard";
 
 const queryClient = new QueryClient();
 
@@ -72,22 +75,60 @@ let theme = createTheme({
 
 theme = responsiveFontSizes(theme);
 
+//-- Type declarations --//
+// Page type
+interface PageType extends React.FunctionComponent<any> {
+  getLayout: (page: JSX.Element) => JSX.Element;
+  allowAuthenticated: boolean;
+  allowNonAuthenticated: boolean;
+  auth?: boolean;
+}
+
+// App prop type
 type ExtendedAppProps<P> = AppProps<P> & {
-  Component: NextComponentType & {
-    auth?: boolean;
-  };
+  // Override the component type
+  Component: PageType;
   pageProps: P & {
     session: Session | null;
   };
 };
 
+// Redirect the user to the login page if the user is not authenticated (but the page requires them to be)
+const DisallowNonAuthenticatedFallback = () => {
+  const router = useRouter();
+  useEffect(() => {
+    router.push(`/login?redirect=${router.asPath}`);
+  }, [router]);
+  return <SpinnerPage />;
+};
+
+// Redirect the user to the track page if the user is authenticated
+const DisallowAuthenticatedFallback = () => {
+  const router = useRouter();
+  useEffect(() => {
+    router.push(`/`);
+  }, [router]);
+  return <SpinnerPage />;
+};
+
 export default function MyApp<P>({ Component, pageProps: { session, ...pageProps } }: ExtendedAppProps<P>) {
+  // Use the layout defined at the page level, if available
+  const getLayout = Component.getLayout || ((page) => page);
+  const { allowAuthenticated, allowNonAuthenticated } = Component;
+
   return (
     <StyledEngineProvider injectFirst>
       <ThemeProvider theme={theme}>
         <SessionProvider session={session}>
           <QueryClientProvider client={queryClient}>
-            <Component {...pageProps} />
+            <AuthenticationGuard
+              disallowAuthenticatedFallback={<DisallowAuthenticatedFallback />}
+              disallowNonAuthenticatedFallback={<DisallowNonAuthenticatedFallback />}
+              allowAuthenticated={allowAuthenticated}
+              allowNonAuthenticated={allowNonAuthenticated}
+            >
+              {getLayout(<Component {...pageProps} />)}
+            </AuthenticationGuard>
           </QueryClientProvider>
         </SessionProvider>
       </ThemeProvider>

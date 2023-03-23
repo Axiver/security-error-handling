@@ -144,61 +144,65 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main>
-        <MainLayout>
-          <Container
+        <Container
+          sx={{
+            paddingY: ({ spacing }) => spacing(2),
+          }}
+          maxWidth="xl"
+        >
+          <Stack
             sx={{
               paddingY: ({ spacing }) => spacing(2),
             }}
-            maxWidth="xl"
+            gap={2}
           >
             <Stack
               sx={{
-                paddingY: ({ spacing }) => spacing(2),
+                justifyContent: "space-between",
               }}
-              gap={2}
+              spacing={1}
+              direction="row"
             >
-              <Stack
+              <Typography
                 sx={{
-                  justifyContent: "space-between",
+                  fontWeight: "bold",
                 }}
-                spacing={1}
-                direction="row"
+                component="h1"
+                variant="h5"
               >
-                <Typography
-                  sx={{
-                    fontWeight: "bold",
-                  }}
-                  component="h1"
-                  variant="h5"
-                >
-                  Sell Posts
-                </Typography>
-                <Link href="/sell-post/create">
-                  <Button variant="contained">Create</Button>
-                </Link>
-              </Stack>
-              {sellPosts && sellPosts.length > 0 && (
-                <Grid container spacing={1}>
-                  {sellPosts.map((post) => {
-                    return (
-                      <Grid item key={post.id} xs={12} sm={6} md={4} lg={3}>
-                        <Link
-                          style={{
-                            textDecoration: "none",
-                          }}
-                          href={`/sell-post/${post.id}`}
-                        >
-                          <SellPostListing name={post.name} />
-                        </Link>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              )}
+                Sell Posts
+              </Typography>
+              <Link href="/sell-post/create">
+                <Button variant="contained">Create</Button>
+              </Link>
             </Stack>
-          </Container>
-        </MainLayout>
+            {sellPosts && sellPosts.length > 0 && (
+              <Grid container spacing={1}>
+                {sellPosts.map((post) => {
+                  return (
+                    <Grid item key={post.id} xs={12} sm={6} md={4} lg={3}>
+                      <Link
+                        style={{
+                          textDecoration: "none",
+                        }}
+                        href={`/sell-post/${post.id}`}
+                      >
+                        <SellPostListing name={post.name} />
+                      </Link>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            )}
+          </Stack>
+        </Container>
       </main>
     </>
   );
 }
+
+// -- Configure AuthGuard -- //
+Home.allowAuthenticated = true;
+
+// Page layout
+Home.getLayout = (page: JSX.Element) => <MainLayout>{page}</MainLayout>;
