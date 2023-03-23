@@ -1,27 +1,7 @@
 import prisma from "@/utils/prisma";
 import bcrypt from "bcryptjs";
-import NextAuth, { DefaultSession, NextAuthOptions } from "next-auth";
-
-/**
- * Module augmentation for `next-auth` types
- * Allows us to add custom properties to the `session` object
- * and keep type safety
- * @see https://next-auth.js.org/getting-started/typescript#module-augmentation
- **/
-declare module "next-auth" {
-  interface Session extends DefaultSession {
-    user: {
-      id: string;
-      // ...other properties
-      // role: UserRole;
-    } & DefaultSession["user"];
-  }
-
-  // interface User {
-  //   // ...other properties
-  //   // role: UserRole;
-  // }
-}
+import NextAuth, { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
 
 export const authOptions: NextAuthOptions = {
   callbacks: {
@@ -42,38 +22,51 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   providers: [
-    {
-      id: "credentials",
+    CredentialsProvider({
+      // The name to display on the sign in form (e.g. 'Sign in with...')
       name: "Credentials",
-      type: "credentials",
+      // The credentials is used to generate a suitable form on the sign in page.
+      // You can specify whatever fields you are expecting to be submitted.
+      // e.g. domain, username, password, 2FA token, etc.
+      // You can pass any HTML attribute to the <input> tag through the object.
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        email: { label: "Email", type: "email", placeholder: "Username" },
+        password: { label: "Password", type: "password", placeholder: "Username" },
       },
-      async authorize(credentials) {
-        if (!credentials) {
+      async authorize(credentials, req) {
+        // You need to provide your own logic here that takes the credentials
+        // submitted and returns either a object representing a user or value
+        // that is false/null if the credentials are invalid.
+        // e.g. return { id: 1, name: 'J Smith', email: 'jsmith@example.com' }
+        // You can also use the `req` object to obtain additional parameters
+        // (i.e., the request IP address)
+
+        // Check if any credentials were provided
+        if (!credentials || !credentials.email || !credentials.password) {
           return null;
         }
 
-        // Verify that the user exists in the database
+        //-- Verify that the user exists in the database --//
+        // Retrieve the user from the database
         const user = await prisma.user.findUnique({
           where: {
             email: credentials.email,
           },
         });
 
-        if (user && user.password) {
-          // Check  if the password is correct
-          const isPasswordCorrect = await bcrypt.compare(credentials.password, user.password);
-
-          // Any object returned will be saved in the `user` property of the JWT
-          return isPasswordCorrect ? user : null;
-        } else {
-          // If you return null, an error will be displayed advising the user to check their details.
+        // Check if a user with the email provided exists
+        if (!user) {
+          // It does not
           return null;
         }
+
+        // Check if the password provided matches that of the user retrieved
+        const isPasswordCorrect = await bcrypt.compare(credentials.password, user.password);
+
+        // Any object returned will be saved in the `user` property of the JWT
+        return isPasswordCorrect ? user : null;
       },
-    },
+    }),
   ],
 };
 
