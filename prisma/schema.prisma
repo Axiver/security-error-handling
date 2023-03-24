@@ -3,65 +3,332 @@ generator client {
 }
 
 datasource db {
-  provider = "cockroachdb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                 String?
-  password             String?
-  email                String?                @unique
-  emailVerified        DateTime?              @map("email_verified")
-  image                String?
-  role                 Int                    @default(1)
-  SellPostUserBookmark SellPostUserBookmark[]
-  SellPost             SellPost[]
-  Notification         UserNotification?
-
-  @@map("users")
-}
-
-model UserNotification {
-  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId             String    @unique @map("user_id") @db.Uuid
-  updatedAt          DateTime? @default(now()) @map("updated_at")
-  originalPostStatus String
-  sellPostId         String    @map("sell_post_id") @db.Uuid
-  SellPost           SellPost  @relation(fields: [sellPostId], references: [id], onDelete: Cascade)
-  User               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("notifications")
-}
-
-model SellPost {
-  id               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name             String
-  description      String
-  status           String
-  sellerId         String                 @map("seller_id") @db.Uuid
-  Bookmark         SellPostUserBookmark[]
-  seller           User                   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  UserNotification UserNotification[]
-}
-
-model SellPostUserBookmark {
+model bookmarks {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
-  sellPostId     String   @map("sell_post_id") @db.Uuid
+  user_id        String   @db.Uuid
+  sell_post_id   BigInt 
   notificationId String?  @db.Uuid
-  sellPost       SellPost @relation(fields: [sellPostId], references: [id], onDelete: Cascade)
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing        listing  @relation(fields: [sell_post_id], references: [id], onDelete: Cascade)
+  users          users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@unique([userId, sellPostId])
-  @@map("Bookmark")
+  @@unique([user_id, sell_post_id])
 }
 
-model SIBKey {
+model notifications {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String    @unique @db.Uuid
+  updated_at         DateTime? @default(now())
+  originalPostStatus String
+  sell_post_id       BigInt
+  listing            listing    @relation(fields: [sell_post_id], references: [id], onDelete: Cascade)
+  users              users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model sibkeys {
   key      String @id
   uses     Int    @default(300)
   sibEmail String
 
   @@unique([key, sibEmail])
-  @@map("sibkeys")
+}
+
+model users {
+  id                             String           @unique(map: "userid_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at                     DateTime         @default(now()) @db.Timestamptz(6)
+  name                           String           @db.VarChar(255)
+  password                       String           @db.VarChar(255)
+  phone                          String?          @db.VarChar(14)
+  email                          String           @db.VarChar(255)
+  contact                        Int?             @db.SmallInt
+  bio                            String?          @db.VarChar(512)
+  companyid                      Int
+  permissions                    Int              @default(0) @db.SmallInt
+  enabled                        Int              @default(1) @db.SmallInt
+  image                          String?          @db.VarChar
+  clicks                         clicks[]
+  listing                        listing[]
+  messages                       messages[]
+  bookmarks                       bookmarks[]
+  notifications  notifications?
+  rooms_rooms_buyer_uuidTousers  rooms[]          @relation("rooms_buyer_uuidTousers")
+  rooms_rooms_seller_uuidTousers rooms[]          @relation("rooms_seller_uuidTousers")
+  companies                      companies        @relation(fields: [companyid], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_companies")
+  users_contacts                 users_contacts?  @relation(fields: [contact], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_contacts")
+  users_comments                 users_comments[]
+
+  @@id([id, email])
+  @@index([contact], map: "fki_users_contacts")
+  @@map("users")
+}
+
+model advertisements {
+  id          BigInt     @id(map: "Advertisements_pkey") @default(autoincrement())
+  created_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  company_id  Int?
+  image       String?    @db.Uuid
+  active      Boolean?   @default(false)
+  updated_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  description String?    @db.VarChar
+  link        String?    @db.VarChar
+  companies   companies? @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clicks      clicks[]
+
+}
+
+model categories_parameters {
+  category                                             BigInt
+  parameter                                            BigInt
+  required                                             Boolean?  @default(true)
+  updated_at                                           DateTime? @default(now()) @db.Timestamptz(6)
+  created_at                                           DateTime? @default(now()) @db.Timestamptz(6)
+  category_categories_parameters_categoryTocategory    category  @relation("categories_parameters_categoryTocategory", fields: [category], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parameter_categories_parameters_parameterToparameter parameter @relation("categories_parameters_parameterToparameter", fields: [parameter], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([category, parameter])
+}
+
+model category {
+  id                                                             BigInt                  @id @default(autoincrement())
+  name                                                           String                  @unique @db.VarChar
+  description                                                    String                  @db.VarChar
+  image                                                          String?                 @db.Uuid
+  updated_at                                                     DateTime?               @default(now()) @db.Timestamptz(6)
+  created_at                                                     DateTime?               @default(now()) @db.Timestamptz(6)
+  active                                                         Boolean?                @default(true)
+  cross_section_image                                            String?                 @db.Uuid
+  categories_parameters_categories_parameters_categoryTocategory categories_parameters[] @relation("categories_parameters_categoryTocategory")
+  listing_listing_categoryTocategory                             listing[]               @relation("listing_categoryTocategory")
+
+}
+
+model clicks {
+  id             BigInt          @id @default(autoincrement())
+  advertisement  BigInt?
+  created_at     DateTime?       @default(now()) @db.Timestamptz(6)
+  user           String?         @db.Uuid
+  link           Boolean?        @default(false)
+  advertisements advertisements? @relation(fields: [advertisement], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users          users?   @relation(fields: [user], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+}
+
+model companies {
+  id                 Int                  @unique(map: "companyid_unique") @default(autoincrement())
+  created_at         DateTime?            @default(now()) @db.Timestamptz(6)
+  name               String               @unique @db.VarChar(255)
+  bio                String?              @db.VarChar(512)
+  website            String?              @db.VarChar(512)
+  visible            Int                  @default(1) @db.SmallInt
+  image              String?              @db.VarChar
+  advertisements     advertisements[]
+  companies_comments companies_comments[]
+  invite             invite[]
+  users              users[]
+
+  @@id([id, name])
+}
+
+model companies_comments {
+  id         Int       @id @default(autoincrement())
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  companyid  Int
+  comments   String?   @db.VarChar(512)
+  companies  companies @relation(fields: [companyid], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+}
+
+model companies_log {
+  id         Int      @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  old_data   Json?
+  new_data   Json?
+  table      String   @db.VarChar(100)
+  actiontype dml_type
+  origin     String?
+
+}
+
+model contents {
+  content_id BigInt     @id @default(autoincrement())
+  text       String?    @db.VarChar
+  file       String?    @db.VarChar
+  image      String?    @db.VarChar
+  created_at DateTime?  @default(now()) @db.Timestamptz(6)
+  offer      BigInt?
+  messages   messages[]
+
+}
+
+model datatype {
+  id                                     BigInt      @id @default(autoincrement())
+  name                                   String      @db.VarChar
+  created_at                             DateTime?   @default(now()) @db.Timestamptz(6)
+  parameter_parameter_datatypeTodatatype parameter[] @relation("parameter_datatypeTodatatype")
+
+}
+
+model invite {
+  id         Int       @id @default(autoincrement())
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  name       String    @db.VarChar(100)
+  email      String    @unique @db.VarChar(255)
+  company    Int
+  expiry     DateTime  @db.Timestamp(6)
+  token      String    @unique @default("")
+  companies  companies @relation(fields: [company], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+}
+
+model invite_log {
+  id         Int      @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  old_data   Json?
+  new_data   Json?
+  table      String   @db.VarChar(100)
+  actiontype dml_type
+  origin     String?
+
+}
+
+model listing {
+  id                                                                   BigInt                      @id @default(autoincrement())
+  name                                                                 String                      @db.VarChar
+  description                                                          String                      @db.VarChar
+  price                                                                Decimal                     @db.Decimal
+  unit_price                                                           Boolean?                    @default(false)
+  negotiable                                                           Boolean?                    @default(true)
+  category                                                             BigInt
+  type                                                                 BigInt
+  updated_at                                                           DateTime?                   @default(now()) @db.Timestamptz(6)
+  created_at                                                           DateTime?                   @default(now()) @db.Timestamptz(6)
+  open                                                                 Boolean?                    @default(true)
+  visibility                                                           Boolean?                    @default(true)
+  active                                                               Boolean?                    @default(true)
+  owner                                                                String                      @db.Uuid
+  bookmarks      bookmarks[]
+  notifications notifications[]
+  category_listing_categoryTocategory                                  category                    @relation("listing_categoryTocategory", fields: [category], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                                                                users                       @relation(fields: [owner], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  listing_type                                                         listing_type                @relation(fields: [type], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  listings_images_listings_images_listingTolisting                     listings_images[]           @relation("listings_images_listingTolisting")
+  listings_parameters_value_listings_parameters_value_listingTolisting listings_parameters_value[] @relation("listings_parameters_value_listingTolisting")
+  rooms                                                                rooms[]
+}
+
+model listing_type {
+  id         BigInt    @id @default(autoincrement())
+  name       String    @db.VarChar
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  listing    listing[]
+
+}
+
+model listings_images {
+  id                                       BigInt    @id @default(autoincrement())
+  listing                                  BigInt
+  image                                    String    @db.Uuid
+  updated_at                               DateTime? @default(now()) @db.Timestamptz(6)
+  created_at                               DateTime? @default(now()) @db.Timestamptz(6)
+  listing_listings_images_listingTolisting listing   @relation("listings_images_listingTolisting", fields: [listing], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+}
+
+model listings_parameters_value {
+  listing                                                  BigInt
+  parameter                                                BigInt
+  value                                                    String    @db.VarChar
+  updated_at                                               DateTime? @default(now()) @db.Timestamptz(6)
+  created_at                                               DateTime? @default(now()) @db.Timestamptz(6)
+  listing_listings_parameters_value_listingTolisting       listing   @relation("listings_parameters_value_listingTolisting", fields: [listing], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  parameter_listings_parameters_value_parameterToparameter parameter @relation("listings_parameters_value_parameterToparameter", fields: [parameter], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([listing, parameter], map: "listings_parameters_values_pkey")
+}
+
+model messages {
+  id           BigInt        @id @default(autoincrement())
+  content      BigInt?
+  profile_uuid String?       @db.Uuid
+  room_id      BigInt?
+  status       String?       @db.VarChar
+  created_at   DateTime?     @default(now()) @db.Timestamptz(6)
+  contents     contents?     @relation(fields: [content], references: [content_id], onDelete: NoAction, onUpdate: NoAction)
+  users        users? @relation(fields: [profile_uuid], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rooms        rooms?        @relation(fields: [room_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+}
+
+model parameter {
+  id                                                                       BigInt                      @id(map: "paramter_pkey") @default(autoincrement())
+  name                                                                     String                      @unique @db.VarChar
+  display_name                                                             String?                     @db.VarChar
+  type                                                                     BigInt
+  datatype                                                                 BigInt
+  updated_at                                                               DateTime?                   @default(now()) @db.Timestamptz(6)
+  created_at                                                               DateTime?                   @default(now()) @db.Timestamptz(6)
+  active                                                                   Boolean?                    @default(true)
+  categories_parameters_categories_parameters_parameterToparameter         categories_parameters[]     @relation("categories_parameters_parameterToparameter")
+  listings_parameters_value_listings_parameters_value_parameterToparameter listings_parameters_value[] @relation("listings_parameters_value_parameterToparameter")
+  datatype_parameter_datatypeTodatatype                                    datatype                    @relation("parameter_datatypeTodatatype", fields: [datatype], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parameter_type                                                           parameter_type              @relation(fields: [type], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parameter_choices_parameter_choices_parameterToparameter                 parameter_choices?          @relation("parameter_choices_parameterToparameter")
+
+}
+
+model parameter_choices {
+  parameter                                        BigInt    @id
+  choice                                           String[]  @db.VarChar
+  updated_at                                       DateTime? @default(now()) @db.Timestamptz(6)
+  created_at                                       DateTime? @default(now()) @db.Timestamptz(6)
+  parameter_parameter_choices_parameterToparameter parameter @relation("parameter_choices_parameterToparameter", fields: [parameter], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+}
+
+model parameter_type {
+  id         BigInt      @id @default(autoincrement())
+  name       String      @db.VarChar
+  created_at DateTime?   @default(now()) @db.Timestamptz(6)
+  parameter  parameter[]
+
+}
+
+model rooms {
+  id                             BigInt        @id @default(autoincrement())
+  seller_uuid                    String?       @db.Uuid
+  buyer_uuid                     String?       @db.Uuid
+  created_at                     DateTime?     @default(now()) @db.Timestamptz(6)
+  listing_id                     BigInt?
+  messages                       messages[]
+  users_rooms_buyer_uuidTousers  users? @relation("rooms_buyer_uuidTousers", fields: [buyer_uuid], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  listing                        listing?      @relation(fields: [listing_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_rooms_seller_uuidTousers users? @relation("rooms_seller_uuidTousers", fields: [seller_uuid], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+}
+
+model users_comments {
+  id         Int          @id @default(autoincrement())
+  created_at DateTime     @default(now()) @db.Timestamptz(6)
+  userid     String       @db.Uuid
+  comments   String?      @db.VarChar(512)
+  users      users @relation(fields: [userid], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+}
+
+model users_contacts {
+  id             Int            @unique(map: "users_contactsid_unique") @default(autoincrement())
+  contact_method String         @db.VarChar(255)
+  users          users[]
+
+  @@id([id, contact_method])
+}
+
+enum dml_type {
+  INSERT
+  UPDATE
+  DELETE
+
 }
