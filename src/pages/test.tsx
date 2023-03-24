@@ -1,20 +1,13 @@
-import {
-  Container,
-  Box,
-  Button,
-  FormGroup,
-  Divider,
-  TextField,
-} from "@mui/material";
+import { Container, Box, Button, FormGroup, Divider, TextField } from "@mui/material";
 import { signIn } from "next-auth/react";
 import Head from "next/head";
 import { TestEmailRequestBody } from "@/types/TestEmailRequestBody";
 import { CreateAPIKeyRequestBody } from "@/types/CreateAPIKeyRequestBody";
-import { SIBKey } from "@prisma/client";
+import { sibkeys } from "@prisma/client";
 import { useState } from "react";
 
 export default function Home() {
-  const [apiKeys, setApiKeys] = useState<SIBKey[]>([]);
+  const [apiKeys, setApiKeys] = useState<sibkeys[]>([]);
   const [numKeys, setNumKeys] = useState(1);
 
   async function getAPIKey() {
@@ -23,17 +16,17 @@ export default function Home() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({numEmails: 10}),
+      body: JSON.stringify({ numEmails: 10 }),
     });
 
     const data = await response.json();
-    
+
     console.log(data);
   }
 
   async function createAPIKey(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    
+
     const requestBody: CreateAPIKeyRequestBody = apiKeys;
 
     const response = await fetch("/api/notification/api-key/create-api-key", {
@@ -128,54 +121,24 @@ export default function Home() {
             justifyContent: "center",
           }}
         >
-          <Button
-            variant="contained"
-            color="primary"
-            sx={{ m: 2, textAlign: "center", width: "60%" }}
-            onClick={() => signIn()}
-          >
+          <Button variant="contained" color="primary" sx={{ m: 2, textAlign: "center", width: "60%" }} onClick={() => signIn()}>
             Sign In
           </Button>
           <br />
-          <Button
-            variant="contained"
-            color="primary"
-            sx={{ m: 2, textAlign: "center", width: "60%" }}
-            onClick={sendNotificationEmail}
-          >
+          <Button variant="contained" color="primary" sx={{ m: 2, textAlign: "center", width: "60%" }} onClick={sendNotificationEmail}>
             Send Notification Email
           </Button>
           <br />
-          <Button
-            variant="contained"
-            color="primary"
-            sx={{ m: 2, textAlign: "center", width: "60%" }}
-            onClick={testSignIn}
-          >
+          <Button variant="contained" color="primary" sx={{ m: 2, textAlign: "center", width: "60%" }} onClick={testSignIn}>
             Test Sign In (Hardcoded credentials, Prisma)
           </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            sx={{ m: 2, textAlign: "center", width: "60%" }}
-            onClick={testSignInNextAuth}
-          >
+          <Button variant="contained" color="primary" sx={{ m: 2, textAlign: "center", width: "60%" }} onClick={testSignInNextAuth}>
             Test Sign In (Hardcoded credentials, NextAuth)
           </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            sx={{ m: 2, textAlign: "center", width: "60%" }}
-            onClick={sendTestNotificationEmails}
-          >
+          <Button variant="contained" color="primary" sx={{ m: 2, textAlign: "center", width: "60%" }} onClick={sendTestNotificationEmails}>
             Spam My Inbox (DO NOT CLICK THIS)
           </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            sx={{ m: 2, textAlign: "center", width: "60%" }}
-            onClick={testBulkNotifsV2}
-          >
+          <Button variant="contained" color="primary" sx={{ m: 2, textAlign: "center", width: "60%" }} onClick={testBulkNotifsV2}>
             Test Bulk Notifications V2
           </Button>
         </Box>
@@ -188,21 +151,11 @@ export default function Home() {
           }}
         >
           <Divider sx={{ width: "100%" }} />
-          <Button
-            variant="contained"
-            color="primary"
-            sx={{ m: 2, textAlign: "center", width: "60%" }}
-            onClick={getAPIKey}
-          >
+          <Button variant="contained" color="primary" sx={{ m: 2, textAlign: "center", width: "60%" }} onClick={getAPIKey}>
             Get API Key
           </Button>
           <Box sx={{ display: "flex", flexDirection: "row" }}>
-            <Button
-              variant="contained"
-              color="primary"
-              sx={{ fontSize: "1.5em", m: 2 }}
-              onClick={() => setNumKeys(numKeys + 1)}
-            >
+            <Button variant="contained" color="primary" sx={{ fontSize: "1.5em", m: 2 }} onClick={() => setNumKeys(numKeys + 1)}>
               +
             </Button>
             <Button
@@ -266,12 +219,7 @@ export default function Home() {
                   <Divider sx={{ width: "100%", m: 1.5 }} />
                 </Box>
               ))}
-              <Button
-                variant="contained"
-                color="primary"
-                sx={{ textAlign: "center", width: "100%" }}
-                type="submit"
-              >
+              <Button variant="contained" color="primary" sx={{ textAlign: "center", width: "100%" }} type="submit">
                 Submit
               </Button>
             </form>

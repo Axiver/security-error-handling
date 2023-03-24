@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Box, Button, Container, FormGroup, Typography, Input, InputLabel } from "@mui/material";
+import MainLayout from "@/components/MainLayout";
 
 function SignUpForm() {
   const [name, setName] = useState("");
@@ -29,6 +30,7 @@ function SignUpForm() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        name: name,
         email: email,
         password: password,
       }),
@@ -73,3 +75,9 @@ function SignUpForm() {
 }
 
 export default SignUpForm;
+
+// -- Configure AuthGuard -- //
+SignUpForm.allowNonAuthenticated = true;
+
+// Page layout
+SignUpForm.getLayout = (page: JSX.Element) => <MainLayout>{page}</MainLayout>;
