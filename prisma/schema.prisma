@@ -8,12 +8,12 @@ datasource db {
 }
 
 model bookmarks {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id        String   @db.Uuid
-  sell_post_id   BigInt 
-  notificationId String?  @db.Uuid
-  listing        listing  @relation(fields: [sell_post_id], references: [id], onDelete: Cascade)
-  users          users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String  @db.Uuid
+  sell_post_id   BigInt
+  notificationId String? @db.Uuid
+  listing        listing @relation(fields: [sell_post_id], references: [id], onDelete: Cascade)
+  users          users   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, sell_post_id])
 }
@@ -24,7 +24,7 @@ model notifications {
   updated_at         DateTime? @default(now())
   originalPostStatus String
   sell_post_id       BigInt
-  listing            listing    @relation(fields: [sell_post_id], references: [id], onDelete: Cascade)
+  listing            listing   @relation(fields: [sell_post_id], references: [id], onDelete: Cascade)
   users              users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
@@ -34,6 +34,38 @@ model sibkeys {
   sibEmail String
 
   @@unique([key, sibEmail])
+}
+
+model refresh_tokens {
+  id            BigInt          @id @default(autoincrement())
+  token         String          @unique(map: "refresh_tokens_token_unique") @db.VarChar(255)
+  user_id       String          @db.Uuid
+  revoked       Boolean?
+  created_at    DateTime?       @db.Timestamptz(6)
+  updated_at    DateTime?       @db.Timestamptz(6)
+  expires_at    DateTime?       @db.Timestamptz(6)
+  users         users           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  access_tokens access_tokens[]
+
+  @@index([user_id])
+  @@index([token])
+}
+
+model access_tokens {
+  id             BigInt         @id @default(autoincrement())
+  token          String         @unique(map: "access_tokens_token_unique") @db.VarChar(255)
+  refresh_token  BigInt
+  user_id        String         @db.Uuid
+  revoked        Boolean?
+  created_at     DateTime?      @db.Timestamptz(6)
+  updated_at     DateTime?      @db.Timestamptz(6)
+  expires_at     DateTime?      @db.Timestamptz(6)
+  users          users          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  refresh_tokens refresh_tokens @relation(fields: [refresh_token], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id])
+  @@index([token])
+  @@index([refresh_token])
 }
 
 model users {
@@ -52,13 +84,15 @@ model users {
   clicks                         clicks[]
   listing                        listing[]
   messages                       messages[]
-  bookmarks                       bookmarks[]
-  notifications  notifications?
+  bookmarks                      bookmarks[]
+  notifications                  notifications?
   rooms_rooms_buyer_uuidTousers  rooms[]          @relation("rooms_buyer_uuidTousers")
   rooms_rooms_seller_uuidTousers rooms[]          @relation("rooms_seller_uuidTousers")
   companies                      companies        @relation(fields: [companyid], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_companies")
   users_contacts                 users_contacts?  @relation(fields: [contact], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_contacts")
   users_comments                 users_comments[]
+  refresh_tokens                 refresh_tokens[]
+  access_tokens                  access_tokens[]
 
   @@id([id])
   @@index([contact], map: "fki_users_contacts")
@@ -76,7 +110,6 @@ model advertisements {
   link        String?    @db.VarChar
   companies   companies? @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   clicks      clicks[]
-
 }
 
 model categories_parameters {
@@ -102,7 +135,6 @@ model category {
   cross_section_image                                            String?                 @db.Uuid
   categories_parameters_categories_parameters_categoryTocategory categories_parameters[] @relation("categories_parameters_categoryTocategory")
   listing_listing_categoryTocategory                             listing[]               @relation("listing_categoryTocategory")
-
 }
 
 model clicks {
@@ -112,8 +144,7 @@ model clicks {
   user           String?         @db.Uuid
   link           Boolean?        @default(false)
   advertisements advertisements? @relation(fields: [advertisement], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users          users?   @relation(fields: [user], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
+  users          users?          @relation(fields: [user], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model companies {
@@ -138,7 +169,6 @@ model companies_comments {
   companyid  Int
   comments   String?   @db.VarChar(512)
   companies  companies @relation(fields: [companyid], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
 }
 
 model companies_log {
@@ -149,7 +179,6 @@ model companies_log {
   table      String   @db.VarChar(100)
   actiontype dml_type
   origin     String?
-
 }
 
 model contents {
@@ -160,7 +189,6 @@ model contents {
   created_at DateTime?  @default(now()) @db.Timestamptz(6)
   offer      BigInt?
   messages   messages[]
-
 }
 
 model datatype {
@@ -168,7 +196,6 @@ model datatype {
   name                                   String      @db.VarChar
   created_at                             DateTime?   @default(now()) @db.Timestamptz(6)
   parameter_parameter_datatypeTodatatype parameter[] @relation("parameter_datatypeTodatatype")
-
 }
 
 model invite {
@@ -180,7 +207,6 @@ model invite {
   expiry     DateTime  @db.Timestamp(6)
   token      String    @unique @default("")
   companies  companies @relation(fields: [company], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
 }
 
 model invite_log {
@@ -191,7 +217,6 @@ model invite_log {
   table      String   @db.VarChar(100)
   actiontype dml_type
   origin     String?
-
 }
 
 model listing {
@@ -209,8 +234,8 @@ model listing {
   visibility                                                           Boolean?                    @default(true)
   active                                                               Boolean?                    @default(true)
   owner                                                                String                      @db.Uuid
-  bookmarks      bookmarks[]
-  notifications notifications[]
+  bookmarks                                                            bookmarks[]
+  notifications                                                        notifications[]
   category_listing_categoryTocategory                                  category                    @relation("listing_categoryTocategory", fields: [category], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users                                                                users                       @relation(fields: [owner], references: [id], onDelete: Cascade, onUpdate: NoAction)
   listing_type                                                         listing_type                @relation(fields: [type], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -224,7 +249,6 @@ model listing_type {
   name       String    @db.VarChar
   created_at DateTime? @default(now()) @db.Timestamptz(6)
   listing    listing[]
-
 }
 
 model listings_images {
@@ -234,7 +258,6 @@ model listings_images {
   updated_at                               DateTime? @default(now()) @db.Timestamptz(6)
   created_at                               DateTime? @default(now()) @db.Timestamptz(6)
   listing_listings_images_listingTolisting listing   @relation("listings_images_listingTolisting", fields: [listing], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
 }
 
 model listings_parameters_value {
@@ -250,16 +273,15 @@ model listings_parameters_value {
 }
 
 model messages {
-  id           BigInt        @id @default(autoincrement())
+  id           BigInt    @id @default(autoincrement())
   content      BigInt?
-  profile_uuid String?       @db.Uuid
+  profile_uuid String?   @db.Uuid
   room_id      BigInt?
-  status       String?       @db.VarChar
-  created_at   DateTime?     @default(now()) @db.Timestamptz(6)
-  contents     contents?     @relation(fields: [content], references: [content_id], onDelete: NoAction, onUpdate: NoAction)
-  users        users? @relation(fields: [profile_uuid], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  rooms        rooms?        @relation(fields: [room_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
+  status       String?   @db.VarChar
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  contents     contents? @relation(fields: [content], references: [content_id], onDelete: NoAction, onUpdate: NoAction)
+  users        users?    @relation(fields: [profile_uuid], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rooms        rooms?    @relation(fields: [room_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model parameter {
@@ -276,7 +298,6 @@ model parameter {
   datatype_parameter_datatypeTodatatype                                    datatype                    @relation("parameter_datatypeTodatatype", fields: [datatype], references: [id], onDelete: NoAction, onUpdate: NoAction)
   parameter_type                                                           parameter_type              @relation(fields: [type], references: [id], onDelete: NoAction, onUpdate: NoAction)
   parameter_choices_parameter_choices_parameterToparameter                 parameter_choices?          @relation("parameter_choices_parameterToparameter")
-
 }
 
 model parameter_choices {
@@ -285,7 +306,6 @@ model parameter_choices {
   updated_at                                       DateTime? @default(now()) @db.Timestamptz(6)
   created_at                                       DateTime? @default(now()) @db.Timestamptz(6)
   parameter_parameter_choices_parameterToparameter parameter @relation("parameter_choices_parameterToparameter", fields: [parameter], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
 }
 
 model parameter_type {
@@ -293,34 +313,31 @@ model parameter_type {
   name       String      @db.VarChar
   created_at DateTime?   @default(now()) @db.Timestamptz(6)
   parameter  parameter[]
-
 }
 
 model rooms {
-  id                             BigInt        @id @default(autoincrement())
-  seller_uuid                    String?       @db.Uuid
-  buyer_uuid                     String?       @db.Uuid
-  created_at                     DateTime?     @default(now()) @db.Timestamptz(6)
+  id                             BigInt     @id @default(autoincrement())
+  seller_uuid                    String?    @db.Uuid
+  buyer_uuid                     String?    @db.Uuid
+  created_at                     DateTime?  @default(now()) @db.Timestamptz(6)
   listing_id                     BigInt?
   messages                       messages[]
-  users_rooms_buyer_uuidTousers  users? @relation("rooms_buyer_uuidTousers", fields: [buyer_uuid], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  listing                        listing?      @relation(fields: [listing_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users_rooms_seller_uuidTousers users? @relation("rooms_seller_uuidTousers", fields: [seller_uuid], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
+  users_rooms_buyer_uuidTousers  users?     @relation("rooms_buyer_uuidTousers", fields: [buyer_uuid], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  listing                        listing?   @relation(fields: [listing_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_rooms_seller_uuidTousers users?     @relation("rooms_seller_uuidTousers", fields: [seller_uuid], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model users_comments {
-  id         Int          @id @default(autoincrement())
-  created_at DateTime     @default(now()) @db.Timestamptz(6)
-  userid     String       @db.Uuid
-  comments   String?      @db.VarChar(512)
-  users      users @relation(fields: [userid], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
+  id         Int      @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  userid     String   @db.Uuid
+  comments   String?  @db.VarChar(512)
+  users      users    @relation(fields: [userid], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model users_contacts {
-  id             Int            @unique(map: "users_contactsid_unique") @default(autoincrement())
-  contact_method String         @db.VarChar(255)
+  id             Int     @unique(map: "users_contactsid_unique") @default(autoincrement())
+  contact_method String  @db.VarChar(255)
   users          users[]
 
   @@id([id, contact_method])
@@ -330,5 +347,4 @@ enum dml_type {
   INSERT
   UPDATE
   DELETE
-
 }
