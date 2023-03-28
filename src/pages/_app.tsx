@@ -119,8 +119,8 @@ export default function MyApp<P>({ Component, pageProps: { session, ...pageProps
   return (
     <StyledEngineProvider injectFirst>
       <ThemeProvider theme={theme}>
-        <SessionProvider session={session}>
-          <QueryClientProvider client={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <SessionProvider session={session}>
             <AuthenticationGuard
               disallowAuthenticatedFallback={<DisallowAuthenticatedFallback />}
               disallowNonAuthenticatedFallback={<DisallowNonAuthenticatedFallback />}
@@ -129,8 +129,8 @@ export default function MyApp<P>({ Component, pageProps: { session, ...pageProps
             >
               {getLayout(<Component {...pageProps} />)}
             </AuthenticationGuard>
-          </QueryClientProvider>
-        </SessionProvider>
+          </SessionProvider>
+        </QueryClientProvider>
       </ThemeProvider>
     </StyledEngineProvider>
   );

@@ -19,7 +19,7 @@ export default (options?: APIHandlerOptions) => {
     //-- API error handling --//
     onError(error, req, res) {
       // An error occurred
-      console.log({ error });
+      console.log({ serverError: error });
       res.status(501).json({ error: "Sorry, something happened!" });
     },
     onNoMatch(req, res) {

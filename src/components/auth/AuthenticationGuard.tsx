@@ -1,6 +1,4 @@
 import { useSession } from "next-auth/react";
-import { useContext } from "react";
-import AppUserContext from "../../contexts/AppUserContext";
 
 // AuthenticationGuard Props
 export interface AuthenticationGuardProps {
