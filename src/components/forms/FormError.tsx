@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import cx from "classnames";
 import { useFormContext } from "react-hook-form";
 import { CSSProperties } from "react";
@@ -39,10 +38,7 @@ const FormError = ({ inputName, error, className, style }: FormErrorProps) => {
   }
 
   return (
-    <div
-      className={cx(className, "w-full text-left h-5 mt-2 mb-1 flex items-center")}
-      style={style}
-    >
+    <div className={cx(className, "w-full text-left h-5 mt-2 mb-1 flex items-center")} style={style}>
       {errorMessage && <ExclamationCircle className="text-error" size={14} />}
       <p className="text-error text-sm ml-2">{errorMessage}</p>
     </div>
