@@ -1,6 +1,6 @@
 import PrismaClient from "@prisma/client";
 import bcrypt from "bcryptjs";
-import apiHandler from "@/utils/apiHandler";
+import apiHandler from "@/utils/api/client/apiHandler";
 
 export default apiHandler.post(async (req, res) => {
   const prisma = new PrismaClient.PrismaClient();

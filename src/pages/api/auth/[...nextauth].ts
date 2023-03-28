@@ -2,6 +2,8 @@ import prisma from "@/utils/prisma";
 import bcrypt from "bcryptjs";
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import authHandler from "@/utils/api/server/authHandler";
+import { JWT } from "next-auth/jwt";
 
 export const authOptions: NextAuthOptions = {
   callbacks: {
@@ -11,11 +13,40 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
-    jwt: async ({ user, token }) => {
-      if (user) {
-        token.uid = user.id;
+    jwt: async ({ user, token, account }) => {
+      console.log({ user, token, account });
+
+      // https://next-auth.js.org/v3/tutorials/refresh-token-rotation
+      // Handle initial sign in (account and user are only returned on initial sign in)
+      if (account && user) {
+        // Generate a new refresh and access token
+        const generatedTokens = await authHandler.requestTokens(user.id);
+
+        // Construct result object
+        const result = {
+          ...token,
+          ...generatedTokens,
+          user,
+        };
+
+        return result;
       }
-      return token;
+
+      // Return previous token if the access token has not expired yet
+      if (Date.now() < token.accessTokenExpires) {
+        return token;
+      }
+
+      // Access token has expired, try to update it
+      const newAccesstoken = await authHandler.refreshAccessToken(token.user.id, token.accessToken, token.refreshToken);
+
+      // Construct result object
+      const result: JWT = {
+        ...token,
+        ...newAccesstoken,
+      };
+
+      return result;
     },
   },
   session: {
@@ -63,8 +94,21 @@ export const authOptions: NextAuthOptions = {
         // Check if the password provided matches that of the user retrieved
         const isPasswordCorrect = await bcrypt.compare(credentials.password, user.password);
 
+        // Return null if password is wrong
+        if (!isPasswordCorrect) {
+          return null;
+        }
+
+        // Format the result to be returned
+        const result = {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          permissions: user.permissions,
+        };
+
         // Any object returned will be saved in the `user` property of the JWT
-        return isPasswordCorrect ? user : null;
+        return result;
       },
     }),
   ],
