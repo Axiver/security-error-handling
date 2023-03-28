@@ -18,6 +18,13 @@ export const apiGuardMiddleware = (options?: APIGuardOptions) => {
         // Throw an error
         throw "unauthenticated";
       }
+
+      // User is authenticated, check if the access token has expired
+      if (new Date() >= new Date(req.token.accessTokenExpires)) {
+        // The access token is invalid
+        // Throw an error
+        throw "access token expired";
+      }
     }
 
     // Perform an admin check if required (defaults to false)
