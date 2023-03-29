@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { CSSProperties } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -20,17 +19,7 @@ type FormInputProps = {
  * Wrapper component for a react hook form input
  * @returns A input that works with react form hook
  */
-const FormInput = ({
-  name,
-  label,
-  placeholder,
-  hidePlaceholder,
-  customValidation,
-  required,
-  success,
-  className,
-  style,
-}: FormInputProps) => {
+const FormInput = ({ name, label, placeholder, hidePlaceholder, customValidation, required, success, className, style }: FormInputProps) => {
   // Use form context
   const {
     register,

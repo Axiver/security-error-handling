@@ -1,8 +1,10 @@
 import PrismaClient from "@prisma/client";
 import bcrypt from "bcryptjs";
-import apiHandler from "@/utils/apiHandler";
+import apiHandler from "@/utils/api/server/apiHandler";
 
-export default apiHandler.post(async (req, res) => {
+export default apiHandler({
+  allowNonAuthenticated: true,
+}).post(async (req, res) => {
   const prisma = new PrismaClient.PrismaClient();
 
   const user = await prisma.users.findUnique({

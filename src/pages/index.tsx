@@ -8,6 +8,8 @@ import MainLayout from "@/components/MainLayout";
 import { useQuery } from "react-query";
 import { z } from "zod";
 import Link from "next/link";
+import apiClient from "@/utils/api/client/apiClient";
+import { useEffect } from "react";
 
 function SellPostListing({ name, bookmarked, soldOut }: { name: string; bookmarked?: boolean; soldOut?: boolean }) {
   return (
@@ -123,17 +125,12 @@ const SellPostSchema = z.object({
 const SellPostArraySchema = z.array(SellPostSchema);
 
 export default function Home() {
-  const { data: sellPosts } = useQuery(["sellPosts"], async () => {
-    const resp = await fetch("/api/sell-post", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    const data = await resp.json();
-
-    return SellPostArraySchema.parse(data);
-  });
+  useEffect(() => {
+    setInterval(async () => {
+      const data = await apiClient.get("/test-api").then((res) => res.data);
+      console.log({ data });
+    }, 15000);
+  }, []);
 
   return (
     <>
@@ -176,24 +173,6 @@ export default function Home() {
                 <Button variant="contained">Create</Button>
               </Link>
             </Stack>
-            {sellPosts && sellPosts.length > 0 && (
-              <Grid container spacing={1}>
-                {sellPosts.map((post) => {
-                  return (
-                    <Grid item key={post.id} xs={12} sm={6} md={4} lg={3}>
-                      <Link
-                        style={{
-                          textDecoration: "none",
-                        }}
-                        href={`/sell-post/${post.id}`}
-                      >
-                        <SellPostListing name={post.name} />
-                      </Link>
-                    </Grid>
-                  );
-                })}
-              </Grid>
-            )}
           </Stack>
         </Container>
       </main>
