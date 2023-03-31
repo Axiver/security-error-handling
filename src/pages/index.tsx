@@ -127,8 +127,8 @@ const SellPostArraySchema = z.array(SellPostSchema);
 export default function Home() {
   useEffect(() => {
     setInterval(async () => {
-      const data = await apiClient.get("/test-api").then((res) => res.data);
-      console.log({ data });
+      const res = await apiClient.get("/test-api").then((res) => res);
+      console.log({ data: res ? res.data : "no data" });
     }, 15000);
   }, []);
 

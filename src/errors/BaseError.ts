@@ -1,16 +1,29 @@
+/**
+ * Error code directory:
+ * 1000 - 1999: Auth errors
+ * 2000 - 2999: Query errors
+ */
+
+/**
+ * Do not throw this error class directly.
+ * Build on top of this error class instead.
+ */
 export class BaseError extends Error {
-  code: number;
-  message: string;
+  message: string; // The error message
+  detail?: string; // Detailed error message (for logging)
+  status: number; // The HTTP status code
+  code: number; // The error code
 
   constructor() {
     super();
-    this.message = "An error occured";
-    this.code = 500;
+    this.message = "An error occurred";
+    this.status = 500;
+    this.code = 0;
   }
 
   toJSON() {
     return {
-      status: this.code,
+      status: this.status,
       message: this.message,
     };
   }
@@ -21,11 +34,9 @@ export class BaseError extends Error {
  * Build on top of this error class instead.
  */
 export class ApiError extends BaseError {
-  code: number;
-
   constructor() {
     super();
     this.message = "Something went wrong";
-    this.code = 500;
+    this.status = 500;
   }
 }

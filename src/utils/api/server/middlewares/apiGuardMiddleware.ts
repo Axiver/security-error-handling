@@ -1,3 +1,4 @@
+import { AuthError, ForbiddenError, TokenExpiredError } from "@/errors/AuthError";
 import { NextApiResponse } from "next";
 import { NextHandler } from "next-connect";
 import { APIRequestType } from "../apiHandler";
@@ -16,14 +17,14 @@ export const apiGuardMiddleware = (options?: APIGuardOptions) => {
       if (!req.token || !req.token.accessToken || !req.token.refreshToken) {
         // User is not authenticated
         // Throw an error
-        throw "unauthenticated";
+        throw new AuthError();
       }
 
       // User is authenticated, check if the access token has expired
       if (new Date() >= new Date(req.token.accessTokenExpires)) {
         // The access token is invalid
         // Throw an error
-        throw "access token expired";
+        throw new TokenExpiredError("access");
       }
     }
 
@@ -33,7 +34,7 @@ export const apiGuardMiddleware = (options?: APIGuardOptions) => {
       if (!req.token?.isAdmin) {
         // User is not an admin
         // Throw an error
-        throw "unauthorized";
+        throw new ForbiddenError(req.token?.name);
       }
     }
 

@@ -1,3 +1,4 @@
+import { BaseError } from "@/errors";
 import { NextApiRequest, NextApiResponse } from "next";
 import { JWT } from "next-auth/jwt";
 import nextConnect from "next-connect";
@@ -17,10 +18,10 @@ export default (options?: APIHandlerOptions) => {
   // Return the next-connect handler
   return nextConnect<APIRequestType, NextApiResponse>({
     //-- API error handling --//
-    onError(error, req, res) {
+    onError(error: BaseError, req, res) {
       // An error occurred
       console.log({ serverError: error });
-      res.status(501).json({ error: "Sorry, something happened!" });
+      res.status(error.status).json({ error: error.message });
     },
     onNoMatch(req, res) {
       res.status(405).json({ error: `Method ${req.method} not allowed` });

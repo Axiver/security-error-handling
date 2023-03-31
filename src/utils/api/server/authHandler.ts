@@ -1,6 +1,7 @@
 import { access_tokens, refresh_tokens } from "@prisma/client";
 import PrismaClient from "../../../utils/prisma";
 import crypto from "crypto";
+import { InvalidTokenError, TokenExpiredError } from "@/errors/AuthError";
 
 /**
  * Type declarations
@@ -8,7 +9,7 @@ import crypto from "crypto";
 type ValidateTokenOptions<T> = {
   userId: string;
   token: T | null;
-  checkExpiry?: boolean;
+  tokenType?: "access" | "refresh";
 };
 
 /**
@@ -109,14 +110,14 @@ const retrieveLatestAccessToken = async (refreshTokenId: bigint) => {
  * @param token The token to validate
  * @returns The token if the token is valid, otherwise throws an error
  */
-const validateToken = async <T extends refresh_tokens>({ userId, token, checkExpiry }: ValidateTokenOptions<T>) => {
+const validateToken = async <T extends refresh_tokens>({ userId, token, tokenType = "access" }: ValidateTokenOptions<T>) => {
   // Check if the token exists in the database
   if (!token) {
     // The token does not exist in the database, this might be an attack
     // Revoke all tokens associated with the user
     await revokeRefreshTokens(userId);
 
-    throw "invalid token";
+    throw new InvalidTokenError(tokenType);
   }
 
   // Check if the token is for the user making the request
@@ -126,15 +127,15 @@ const validateToken = async <T extends refresh_tokens>({ userId, token, checkExp
     await revokeRefreshTokens(userId);
     await revokeRefreshTokens(token.user_id);
 
-    throw "invalid token";
+    throw new InvalidTokenError(tokenType);
   }
 
   // Check if the token has expired (if required)
-  if (checkExpiry && token.expires_at < new Date()) {
+  if (tokenType === "refresh" && token.expires_at < new Date()) {
     // The token has expired, revoke it
     await revokeRefreshToken(token.token);
 
-    throw "token expired";
+    throw new TokenExpiredError(tokenType);
   }
 
   // Check if the token has been revoked
@@ -143,7 +144,7 @@ const validateToken = async <T extends refresh_tokens>({ userId, token, checkExp
     // This might be an attack, so we should revoke all refresh tokens associated with the user
     await revokeRefreshTokens(userId);
 
-    throw "token revoked";
+    throw new InvalidTokenError(tokenType);
   }
 
   // The token is valid
@@ -164,7 +165,7 @@ const validateRefreshToken = async (userId: string, token: string) => {
   return validateToken({
     userId,
     token: refreshToken,
-    checkExpiry: true,
+    tokenType: "refresh",
   });
 };
 
@@ -192,7 +193,7 @@ const validateAccessToken = async (userId: string, token: string) => {
     // Revoke all refresh tokens associated with the user
     await revokeRefreshTokens(userId);
 
-    throw "outdated access token";
+    throw new InvalidTokenError("access");
   }
 
   return accessToken;
@@ -305,7 +306,7 @@ const refreshAccessToken = async (userId: string, $accessToken: string, $refresh
     // It was not, this might be an attack
     // Revoke all the user's refresh tokens
     await revokeRefreshTokens(userId);
-    throw "access token refresh token mismatch";
+    throw new InvalidTokenError("access");
   }
 
   // Generate a new access token

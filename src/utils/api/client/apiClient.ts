@@ -1,3 +1,4 @@
+import { AuthError } from "@/errors/AuthError";
 import axios from "axios";
 import { getSession } from "next-auth/react";
 
@@ -13,23 +14,26 @@ const client = axios.create({
 // Attach an error handler as a response interceptor
 client.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     console.log("error intercepted");
     console.log("we have an error:", { error });
     // Check if the error was due to an invalid token
-    if (error.response.status === 501) {
+    if (error.response.status === AuthError.status) {
       // Refresh the token
-      getSession();
+      await getSession();
 
       // Retry the request (if we didn't already)
       if (currRetries < maxRetries) {
         currRetries++;
         return axios.request(error.config);
       }
+
+      // We have already hit the max number of retries, the user is no longer authenticated
+      // Proceed to throw the error
     }
 
     // whatever you want to do with the error
-    throw error;
+    // throw error;
   }
 );
 

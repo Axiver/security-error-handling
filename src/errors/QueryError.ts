@@ -4,7 +4,7 @@ export class QueryError extends ApiError {
   constructor() {
     super();
     this.message = "Invalid query";
-    this.code = 400;
+    this.status = 400;
   }
 }
 
@@ -15,6 +15,6 @@ export class NotFoundError extends QueryError {
   constructor(item: string) {
     super();
     this.message = `Cannot find ${item}`;
-    this.code = 404;
+    this.status = 404;
   }
 }
