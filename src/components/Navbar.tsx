@@ -24,9 +24,9 @@ const pages = [
 ];
 
 function Navbar() {
-  const { data: session } = useSession();
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
+  const session = useSession();
 
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
@@ -151,11 +151,11 @@ function Navbar() {
           </Box>
 
           <Box sx={{ flexGrow: 0 }}>
-            {session ? (
+            {session.data ? (
               <>
-                <Tooltip title={session.user.email}>
+                <Tooltip title={session.data.user.email}>
                   <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                    <Avatar alt={session.user.email ?? "User"} src="/static/images/avatar/2.jpg" />
+                    <Avatar alt={session.data.user.email ?? "User"} src="/static/images/avatar/2.jpg" />
                   </IconButton>
                 </Tooltip>
                 <Menu
