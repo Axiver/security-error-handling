@@ -14,8 +14,6 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     jwt: async ({ user, token, account }) => {
-      console.log({ user, token, account });
-
       // https://next-auth.js.org/v3/tutorials/refresh-token-rotation
       // Handle initial sign in (account and user are only returned on initial sign in)
       if (account && user) {

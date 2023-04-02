@@ -15,10 +15,10 @@ type ValidateTokenOptions<T> = {
 /**
  * Global variables
  */
-export const ACCESS_TOKEN_VALIDITY = 1000 * 30; // The validity of the access token in milliseconds (2 hours)
-export const REFRESH_TOKEN_VALIDITY = 1000 * 60 * 60 * 24; // The validity of the refresh token in milliseconds (1 day)
-const REFRESH_TOKEN_REFRESH_THRESHOLD = 1000 * 60 * 60 * 4; // The time before the refresh token expires to refresh it in milliseconds (4 hours)
-const ACCESS_TOKEN_GRACE_PERIOD = 1000 * 30; // The time before an expired access token can no longer be used to retrieve the new one in milliseconds (30 seconds)
+export const ACCESS_TOKEN_VALIDITY = 1000 * 15; // The validity of the access token in milliseconds (2 hours)
+export const REFRESH_TOKEN_VALIDITY = 1000 * 60; // The validity of the refresh token in milliseconds (1 day)
+const REFRESH_TOKEN_REFRESH_THRESHOLD = 1000 * 20; // The time before the refresh token expires to refresh it in milliseconds (4 hours)
+const TOKEN_GRACE_PERIOD = 1000 * 30; // The time before an expired access/refresh token can no longer be used to retrieve the new one in milliseconds (30 seconds)
 
 /**
  * Revokes all refresh tokens associated with the user
@@ -87,6 +87,27 @@ const retrieveAccessToken = async (token: string) => {
 };
 
 /**
+ * Retrieves the latest refresh token(s) from the database
+ * @param userId The id of the user to use to retrieve the latest refresh token
+ * @param limit The number of refresh tokens to retrieve
+ * @returns The latest refresh token(s) generated for the user
+ */
+const retrieveLatestRefreshToken = async (userid: string, limit: number) => {
+  // Retrieve the latestaccess token from the database
+  const accessToken = await PrismaClient.refresh_tokens.findMany({
+    where: {
+      user_id: userid,
+    },
+    orderBy: {
+      created_at: "desc",
+    },
+    take: limit,
+  });
+
+  return accessToken;
+};
+
+/**
  * Retrieves the latest access token(s) from the database
  * @param refreshTokenId The id of the refresh token to use to retrieve the latest access token
  * @param limit The number of access tokens to retrieve
@@ -120,6 +141,8 @@ const validateToken = async <T extends refresh_tokens>({ userId, token, tokenTyp
     // Revoke all tokens associated with the user
     await revokeRefreshTokens(userId);
 
+    console.log("fake token attack: ", token);
+
     throw new InvalidTokenError(tokenType);
   }
 
@@ -130,6 +153,8 @@ const validateToken = async <T extends refresh_tokens>({ userId, token, tokenTyp
     await revokeRefreshTokens(userId);
     await revokeRefreshTokens(token.user_id);
 
+    console.log("wrong user token attack: ", token);
+
     throw new InvalidTokenError(tokenType);
   }
 
@@ -137,6 +162,8 @@ const validateToken = async <T extends refresh_tokens>({ userId, token, tokenTyp
   if (tokenType === "refresh" && token.expires_at < new Date()) {
     // The token has expired, revoke it
     await revokeRefreshToken(token.token);
+
+    console.log("token expired attack: ", token);
 
     throw new TokenExpiredError(tokenType);
   }
@@ -146,6 +173,8 @@ const validateToken = async <T extends refresh_tokens>({ userId, token, tokenTyp
     // The token has been revoked, but it was still used in the request
     // This might be an attack, so we should revoke all refresh tokens associated with the user
     await revokeRefreshTokens(userId);
+
+    console.log("token revoked attack: ", token);
 
     throw new InvalidTokenError(tokenType);
   }
@@ -192,19 +221,12 @@ const validateAccessToken = async (userId: string, token: string) => {
   const latestAccessToken = await retrieveLatestAccessToken(accessToken.refresh_token, 2);
 
   // Check if this is the second newest access token
-  if (latestAccessToken[1]?.token === token) {
+  if (latestAccessToken[1]?.token === accessToken.token) {
     // This is the second newest access token, check if it expired within the grace period
-    if (latestAccessToken[1].expires_at < new Date(new Date().getTime() - ACCESS_TOKEN_GRACE_PERIOD)) {
-      // The access token did not expire within the grace period, this might be an attack
-      // Revoke all refresh tokens associated with the user
-      await revokeRefreshTokens(userId);
-
-      throw new InvalidTokenError("access");
+    if (latestAccessToken[1].expires_at > new Date(new Date().getTime() - TOKEN_GRACE_PERIOD)) {
+      // The access token expired within the grace period, its considered as valid
+      return accessToken;
     }
-
-    // The access token expired within the grace period, this is not an attack
-    // Return the new access token
-    return latestAccessToken[0];
   }
 
   // Check if this is the newest access token
@@ -212,6 +234,8 @@ const validateAccessToken = async (userId: string, token: string) => {
     // The access token is not the latest access token, this might be an attack
     // Revoke all refresh tokens associated with the user
     await revokeRefreshTokens(userId);
+
+    console.log("token not the latest two access tokens attack: ", accessToken);
 
     throw new InvalidTokenError("access");
   }
@@ -244,7 +268,7 @@ const generateAccessToken = async (userId: string, refreshToken: refresh_tokens)
   const expiry = new Date(new Date().getTime() + ACCESS_TOKEN_VALIDITY);
 
   // Save the new access token to the database
-  await PrismaClient.access_tokens.create({
+  const result = await PrismaClient.access_tokens.create({
     data: {
       token: newAccessToken,
       user_id: userId,
@@ -255,10 +279,7 @@ const generateAccessToken = async (userId: string, refreshToken: refresh_tokens)
   });
 
   // Return the new access token
-  return {
-    token: newAccessToken,
-    expiry,
-  };
+  return result;
 };
 
 /**
@@ -316,8 +337,8 @@ const refreshAccessToken = async (userId: string, $accessToken: string, $refresh
   // Validate the access token
   const accessToken = await validateAccessToken(userId, $accessToken);
 
-  // Both the access token and the refresh token are valid, refresh the refresh token if necessary
-  const refreshToken = await refreshRefreshToken(userId, $refreshToken);
+  // Validate the refresh token
+  const refreshToken = await validateRefreshToken(userId, $refreshToken);
 
   // Check that the access token is generated by the provided refresh token
   if (accessToken.refresh_token !== refreshToken.id) {
@@ -327,20 +348,35 @@ const refreshAccessToken = async (userId: string, $accessToken: string, $refresh
     throw new InvalidTokenError("access");
   }
 
-  // Initialise the new access token
-  let newAccessToken = null;
+  // Both the access token and the refresh token are valid, refresh the refresh token if necessary
+  const newRefreshToken = await refreshRefreshToken(userId, $refreshToken);
+
+  // Initialise result
+  let newAccessToken = accessToken;
+
+  // Retrieve the latest 2 access tokens generated by the refresh token
+  const latestAccessToken = await retrieveLatestAccessToken(accessToken.refresh_token, 2);
+
+  // Check if this is the second newest access token
+  if (latestAccessToken[1]?.token === accessToken.token) {
+    // This is the second newest access token, check if it expired within the grace period
+    if (latestAccessToken[1].expires_at > new Date(new Date().getTime() - TOKEN_GRACE_PERIOD)) {
+      // The access token expired within the grace period, return the newest access token that was generated by the refresh token
+      newAccessToken = latestAccessToken[0];
+    }
+  }
 
   // Check if the access token has expired
   if (accessToken.expires_at.getTime() <= new Date().getTime()) {
     // The access token has expired, generate a new one
-    newAccessToken = await generateAccessToken(userId, refreshToken);
+    newAccessToken = await generateAccessToken(userId, newRefreshToken);
   }
 
-  // Prepare the result object
+  // Format the result
   const result = {
-    accessToken: newAccessToken?.token || accessToken.token,
-    accessTokenExpires: newAccessToken?.expiry.getTime() || accessToken.expires_at.getTime(),
-    refreshToken: refreshToken.token,
+    accessToken: newAccessToken.token,
+    accessTokenExpires: newAccessToken.expires_at.getTime(),
+    refreshToken: newRefreshToken.token,
   };
 
   return result;
@@ -360,7 +396,7 @@ const requestTokens = async (userId: string) => {
   // Prepare the result object
   const result = {
     accessToken: accessToken.token,
-    accessTokenExpires: accessToken.expiry.getTime(),
+    accessTokenExpires: accessToken.expires_at.getTime(),
     refreshToken: refreshToken.token,
   };
 
