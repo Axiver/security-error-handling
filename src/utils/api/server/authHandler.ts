@@ -15,10 +15,10 @@ type ValidateTokenOptions<T> = {
 /**
  * Global variables
  */
-export const ACCESS_TOKEN_VALIDITY = 1000 * 15; // The validity of the access token in milliseconds (2 hours)
-export const REFRESH_TOKEN_VALIDITY = 1000 * 60; // The validity of the refresh token in milliseconds (1 day)
-const REFRESH_TOKEN_REFRESH_THRESHOLD = 1000 * 20; // The time before the refresh token expires to refresh it in milliseconds (4 hours)
-const TOKEN_GRACE_PERIOD = 1000 * 30; // The time before an expired access/refresh token can no longer be used to retrieve the new one in milliseconds (30 seconds)
+export const ACCESS_TOKEN_VALIDITY = 1000 * 60 * 60 * 2; // The validity of the access token in milliseconds (2 hours)
+export const REFRESH_TOKEN_VALIDITY = 1000 * 60 * 60 * 24; // The validity of the refresh token in milliseconds (1 day)
+const REFRESH_TOKEN_REFRESH_THRESHOLD = 1000 * 60 * 60 * 4; // The time before the refresh token expires to refresh it in milliseconds (4 hours)
+const TOKEN_GRACE_PERIOD = 1000 * 30; // The time before an expired access token can no longer be used to retrieve the new one in milliseconds (30 seconds)
 
 /**
  * Revokes all refresh tokens associated with the user
