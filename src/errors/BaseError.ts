@@ -24,7 +24,8 @@ export class BaseError extends Error {
   toJSON() {
     return {
       status: this.status,
-      message: this.message,
+      code: this.code,
+      error: this.message,
     };
   }
 }

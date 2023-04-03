@@ -38,7 +38,7 @@ export class ForbiddenError extends ApiError {
  */
 export class InvalidTokenError extends ApiError {
   public static readonly status = 401;
-  public static readonly code = 1002;
+  public static readonly code: number = 1002;
 
   constructor(tokenType: tokenType | tokenType[]) {
     super();
@@ -53,7 +53,7 @@ export class InvalidTokenError extends ApiError {
  */
 export class TokenExpiredError extends InvalidTokenError {
   public static readonly status = 401;
-  public static readonly code = 1002;
+  public static readonly code = 1003;
 
   constructor(tokenType: tokenType) {
     super(tokenType);
@@ -68,11 +68,11 @@ export class TokenExpiredError extends InvalidTokenError {
  */
 export class TokenRevokedError extends InvalidTokenError {
   public static readonly status = 401;
-  public static readonly code = 1002;
+  public static readonly code = 1004;
 
   constructor(tokenType: tokenType) {
     super(tokenType);
-    this.message = `${capitalizeFirstLetter(tokenType)} token is expired`;
+    this.message = `${capitalizeFirstLetter(tokenType)} token is revoked`;
     this.status = TokenExpiredError.status;
     this.code = TokenExpiredError.code;
   }

@@ -1,3 +1,4 @@
+import { ApiError } from "@/errors";
 import { apiHandler } from "@/utils/api";
 
 export default apiHandler().get(async (req, res) => {
