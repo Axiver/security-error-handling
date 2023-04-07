@@ -18,20 +18,14 @@ const client = axios.create({
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
-    console.log("error intercepted");
-    console.log("we have an error:", { error: error.response.data });
     // Check if the error was due to an invalid token
     if (error.response.status === AuthError.status) {
       // Refresh the token
-      console.log("attempting to refresh token");
 
       // Check if the token is already being refreshed
       if (!tokenRefreshPromise) {
         // It is not being refreshed, refresh it
-        console.log("refreshing token");
         tokenRefreshPromise = getSession();
-      } else {
-        console.log("token is already being refreshed");
       }
 
       // Wait for the token to be refreshed
@@ -39,8 +33,6 @@ client.interceptors.response.use(
 
       // Clear the token refresh promise
       tokenRefreshPromise = null;
-
-      console.log("token refreshed: ", token);
 
       // Retry the request (if we didn't already)
       if (currRetries < maxRetries) {
