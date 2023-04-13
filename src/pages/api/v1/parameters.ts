@@ -1,4 +1,6 @@
 import { apiHandler } from "@/utils/api";
+import { parseToNumber } from "@/utils/stringUtils";
+import PrismaClient from "@/utils/prisma";
 import { z } from "zod";
 
 /**
@@ -12,11 +14,49 @@ export const paramsPostRequest = z.object({
   dataType: z.string(),
 });
 
+//-- Type definitions --//
+type parameter = {
+  id?: number;
+  name: string;
+  displayName: string;
+  type?: number;
+  dataType?: number;
+};
+
 export default apiHandler({
   allowNonAuthenticated: true,
 }).post(async (req, res) => {
   // Parse and validate the request body
   const data = paramsPostRequest.parse(req.body);
 
-  res.status(200).json({ success: true, message: "test complete" });
+  // Initialise the parameter object
+  const newParam: parameter = {
+    name: data.name,
+    displayName: data.displayName,
+  };
+
+  console.log("data received");
+
+  // Attempt to convert the type and dataType to numbers
+  newParam.type = parseToNumber(data.type, "type");
+  newParam.dataType = parseToNumber(data.dataType, "dataType");
+
+  console.log("parsed: ", newParam);
+
+  // Insert the parameter into the database
+  const result = await PrismaClient.parameter.create({
+    data: {
+      name: newParam.name,
+      display_name: newParam.displayName,
+      type: newParam.type,
+      datatype: newParam.dataType,
+    },
+  });
+
+  console.log("created");
+
+  console.log({ result });
+
+  // Return the result
+  res.status(201).json({ parameterId: result.id });
 });

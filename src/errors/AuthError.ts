@@ -1,4 +1,4 @@
-import arrayToString, { capitalizeFirstLetter } from "@/utils/textUtils";
+import { arrayToString, capitalizeFirstLetter } from "@/utils/stringUtils";
 import { ApiError } from "./BaseError";
 
 //-- Type Definitions --//

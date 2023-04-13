@@ -1,9 +1,11 @@
+import { ParamInvalidError, ParamTypeError } from "@/errors";
+
 /**
  * Capitalize the first letter of a string
  * @param text The text to capitalize the first letter of
  * @returns The text with the first letter capitalized
  */
-export const capitalizeFirstLetter = (text: string) => {
+const capitalizeFirstLetter = (text: string) => {
   // Capitalize the first letter of a string
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
@@ -30,4 +32,28 @@ const arrayToString = (arr: string[] | number[], joinWord: string) => {
   return result;
 };
 
-export default arrayToString;
+/**
+ * Parse a string to a number
+ * @param string The string to parse
+ * @returns The parsed number
+ */
+const parseToNumber = (string: string, key?: string) => {
+  try {
+    const result = Number(string.toString());
+
+    if (Number.isNaN(result)) {
+      throw new Error();
+    }
+
+    return Number(string.toString());
+  } catch (error) {
+    // Unable to parse string to number
+    if (key) {
+      throw new ParamInvalidError(key, string);
+    } else {
+      throw error;
+    }
+  }
+};
+
+export { capitalizeFirstLetter, arrayToString, parseToNumber };

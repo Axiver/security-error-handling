@@ -5,6 +5,7 @@ import nextConnect from "next-connect";
 import { apiGuardMiddleware, APIGuardOptions } from "./middlewares/apiGuardMiddleware";
 import { jwtMiddleware } from "./middlewares/jwtMiddleware";
 import { ZodError } from "zod";
+import { Prisma } from "@prisma/client";
 
 //-- Type definitions --//
 // Define the type of the request object
@@ -39,6 +40,19 @@ function handleZodError(error: ZodError) {
   return new ParamError();
 }
 
+/**
+ * Prisma error handler
+ */
+function handlePrismaError(error: Prisma.PrismaClientKnownRequestError) {
+  // Check if it was a foreign key constraint error
+  if (error.code === "P2003") {
+    // Yes it was, return a param error
+  }
+
+  // Unrecognised prisma error
+  return new ParamError();
+}
+
 export default (options?: APIHandlerOptions) => {
   // Return the next-connect handler
   return nextConnect<APIRequestType, NextApiResponse>({
@@ -49,6 +63,7 @@ export default (options?: APIHandlerOptions) => {
       if (error instanceof BaseError) {
         // Yes it was, return the error message
         res.status(error.status).json(error.toJSON());
+        return;
       }
 
       // Check if it was a zod error
@@ -58,7 +73,22 @@ export default (options?: APIHandlerOptions) => {
 
         // Return the error message
         res.status(err.status).json(err.toJSON());
+        return;
       }
+
+      // Check if it was a prisma error
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        // We got a prisma error
+        const err: BaseError = handlePrismaError(error);
+
+        // Return the error message
+        res.status(err.status).json(err.toJSON());
+        return;
+      }
+
+      // Unknown error
+      console.error(error);
+      res.status(500);
     },
     onNoMatch(req, res) {
       res.status(405).json({ error: `Method ${req.method} not allowed` });

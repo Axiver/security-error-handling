@@ -34,8 +34,6 @@ const Login = () => {
     // Attempt to log the user in
     const authResult = await signIn("credentials", { email, password, redirect: false });
 
-    console.log({ authResult });
-
     // Check if it was successful
     if (!authResult?.ok) {
       // Sign in failed, set the error state

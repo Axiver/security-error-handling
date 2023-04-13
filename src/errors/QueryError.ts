@@ -69,3 +69,21 @@ export class ParamTypeError extends ParamError {
     this.code = ParamTypeError.code;
   }
 }
+
+/**
+ * Invalid query/body parameter provided
+ * @example "Parameter 'id' of value 'abc' is invalid"
+ * @param parameter The parameter name
+ * @param paramValue The value of the parameter
+ */
+export class ParamInvalidError extends ParamError {
+  public static readonly status = 422;
+  public static readonly code = 2005;
+
+  constructor(parameter: string, paramValue: any) {
+    super();
+    this.message = `'${parameter}' of value '${paramValue}' is invalid`;
+    this.status = ParamInvalidError.status;
+    this.code = ParamInvalidError.code;
+  }
+}
