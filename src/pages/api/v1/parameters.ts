@@ -35,13 +35,9 @@ export default apiHandler({
     displayName: data.displayName,
   };
 
-  console.log("data received");
-
   // Attempt to convert the type and dataType to numbers
   newParam.type = parseToNumber(data.type, "type");
   newParam.dataType = parseToNumber(data.dataType, "dataType");
-
-  console.log("parsed: ", newParam);
 
   // Insert the parameter into the database
   const result = await PrismaClient.parameter.create({
@@ -52,10 +48,6 @@ export default apiHandler({
       datatype: newParam.dataType,
     },
   });
-
-  console.log("created");
-
-  console.log({ result });
 
   // Return the result
   res.status(201).json({ parameterId: result.id });
