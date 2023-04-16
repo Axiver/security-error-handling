@@ -21,7 +21,6 @@ client.interceptors.response.use(
     // Check if the error was due to an invalid token
     if (error.response.status === AuthError.status) {
       // Refresh the token
-
       // Check if the token is already being refreshed
       if (!tokenRefreshPromise) {
         // It is not being refreshed, refresh it
@@ -29,23 +28,26 @@ client.interceptors.response.use(
       }
 
       // Wait for the token to be refreshed
-      const token = await tokenRefreshPromise;
+      await tokenRefreshPromise;
 
       // Clear the token refresh promise
       tokenRefreshPromise = null;
 
       // Retry the request (if we didn't already)
       if (currRetries < maxRetries) {
+        // Increment the number of retries and retry the request
         currRetries++;
-        return axios.request(error.config);
+        const res = await client.request(error.config);
+
+        // Reset the number of retries and return the result
+        currRetries = 0;
+        return res;
       }
 
       // We have already hit the max number of retries, the user is no longer authenticated
-      // Proceed to throw the error
+      // Redirect the user to the login page
+      // window.location.href = "/login";
     }
-
-    // whatever you want to do with the error
-    // throw error;
   }
 );
 
