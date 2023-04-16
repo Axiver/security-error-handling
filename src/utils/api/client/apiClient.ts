@@ -1,7 +1,7 @@
 import { AuthError } from "@/errors/AuthError";
 import axios from "axios";
 import { Session } from "next-auth";
-import { getSession } from "next-auth/react";
+import { getSession, signOut } from "next-auth/react";
 
 //-- Global Variables --//
 const maxRetries = 1; // The total number of times axios will retry a request
@@ -45,8 +45,9 @@ client.interceptors.response.use(
       }
 
       // We have already hit the max number of retries, the user is no longer authenticated
-      // Redirect the user to the login page
-      // window.location.href = "/login";
+      // Clear the user session and redirect the user to the login page
+      await signOut();
+      window.location.href = "/login";
     }
   }
 );
