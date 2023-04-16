@@ -1,13 +1,38 @@
 import { AuthError, ForbiddenError, TokenExpiredError } from "@/errors/AuthError";
 import { NextApiResponse } from "next";
 import { NextHandler } from "next-connect";
-import { APIRequestType } from "../apiHandler";
+import { APIRequestType } from "@/utils/api/server/apiHandler";
+import PrismaClient from "@/utils/prisma";
+import { validateToken } from "@/utils/api/server/authHandler";
 
 export type APIGuardOptions = {
   allowNonAuthenticated?: boolean;
   allowAdminsOnly?: boolean;
 };
 
+/**
+ * Checks if a access token is valid
+ * @param userId The id of the user
+ * @param token The token to check
+ */
+async function validateAccessToken(userId: string, token: string) {
+  // Retrieve the token from the database
+  const accessToken = await PrismaClient.access_tokens.findFirst({
+    where: {
+      token,
+    },
+  });
+
+  console.log({ accessToken });
+
+  // Check if the token is valid
+  return validateToken({ userId, token: accessToken });
+}
+
+/**
+ * Protects API routes
+ * @param options Options for the middleware
+ */
 export const apiGuardMiddleware = (options?: APIGuardOptions) => {
   // Return the middleware function
   return async (req: APIRequestType, res: NextApiResponse, next: NextHandler) => {
@@ -20,12 +45,8 @@ export const apiGuardMiddleware = (options?: APIGuardOptions) => {
         throw new AuthError();
       }
 
-      // User is authenticated, check if the access token has expired
-      if (new Date() >= new Date(req.token.accessTokenExpires)) {
-        // The access token is invalid
-        // Throw an error
-        throw new TokenExpiredError("access");
-      }
+      // User is authenticated, check if the access token is valid
+      await validateAccessToken(req.token.user.id, req.token.accessToken);
     }
 
     // Perform an admin check if required (defaults to false)

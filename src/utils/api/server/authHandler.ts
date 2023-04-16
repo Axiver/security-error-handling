@@ -1,5 +1,5 @@
 import { access_tokens, refresh_tokens } from "@prisma/client";
-import PrismaClient from "../../../utils/prisma";
+import PrismaClient from "@/utils/prisma";
 import crypto from "crypto";
 import { InvalidTokenError, TokenExpiredError } from "@/errors/AuthError";
 
@@ -134,7 +134,7 @@ const retrieveLatestAccessToken = async (refreshTokenId: bigint, limit: number) 
  * @param token The token to validate
  * @returns The token if the token is valid, otherwise throws an error
  */
-const validateToken = async <T extends refresh_tokens>({ userId, token, tokenType = "access" }: ValidateTokenOptions<T>) => {
+export const validateToken = async <T extends refresh_tokens>({ userId, token, tokenType = "access" }: ValidateTokenOptions<T>) => {
   // Check if the token exists in the database
   if (!token) {
     // The token does not exist in the database, this might be an attack
@@ -223,7 +223,7 @@ const validateAccessToken = async (userId: string, token: string) => {
   // Check if this is the latest access token
   if (latestAccessToken[0]?.token !== accessToken.token) {
     // This is not the latest access token, check if it expired within the grace period
-    if (latestAccessToken[1].expires_at > new Date(new Date().getTime() - TOKEN_GRACE_PERIOD)) {
+    if (accessToken.expires_at > new Date(new Date().getTime() - TOKEN_GRACE_PERIOD)) {
       // The access token expired within the grace period, its considered as valid
       return accessToken;
     } else {
