@@ -1,4 +1,4 @@
-import { BaseError, ParamError, ParamRequiredError, ParamTypeError } from "@/errors";
+import { BaseError, ErrorJSON, ParamError, ParamRequiredError, ParamTypeError } from "@/errors";
 import { NextApiRequest, NextApiResponse } from "next";
 import { JWT } from "next-auth/jwt";
 import nextConnect from "next-connect";
@@ -20,24 +20,29 @@ type APIHandlerOptions = {} & APIGuardOptions;
  * Zod error handler
  */
 function handleZodError(error: ZodError) {
-  // Retrieve the first error
-  const err = error.errors[0];
+  // Prepare a resultant array
+  const result = [];
 
-  // Check if it was a type error
-  if (err.code === "invalid_type") {
-    // Yes it was
-    // Check if it is due to a missing param
-    if (err.received === "undefined") {
-      // Yes it was, return a param error
-      return new ParamRequiredError(err.path[0].toString());
+  // Iterate through each Zod Issue
+  for (const err of error.issues) {
+    // Check if it was a type error
+    if (err.code === "invalid_type") {
+      // Yes it was
+      // Check if it is due to a missing param
+      if (err.received === "undefined") {
+        // Yes it was, return a param error
+        result.push(new ParamRequiredError(err.path[0].toString()).toJSON());
+      }
+
+      // Return a param type error
+      result.push(new ParamTypeError(err.path[0].toString(), err.expected, err.received).toJSON());
     }
 
-    // Return a param type error
-    return new ParamTypeError(err.path[0].toString(), err.expected, err.received);
+    // Unrecognised zod error
+    result.push(new ParamError().toJSON());
   }
 
-  // Unrecognised zod error
-  return new ParamError();
+  return result;
 }
 
 /**
@@ -53,42 +58,59 @@ function handlePrismaError(error: Prisma.PrismaClientKnownRequestError) {
   return new ParamError();
 }
 
+/**
+ * Error handler
+ * @param $error The error
+ * @returns An error object
+ */
+function handleError($error: Error): ErrorJSON[] {
+  // An error occurred
+  let error = $error;
+
+  // Check if it was a zod error
+  if (error instanceof ZodError) {
+    // We got a zod error
+    return handleZodError(error);
+  }
+
+  // Check if it was a prisma error
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    // We got a prisma error
+    error = handlePrismaError(error);
+  }
+
+  // Check if it was a custom error
+  if (error instanceof BaseError) {
+    // Return the error message
+    return [error.toJSON()];
+  }
+
+  // An unknown error was received
+  console.error(error);
+  return [new BaseError().toJSON()];
+}
+
 export default (options?: APIHandlerOptions) => {
   // Return the next-connect handler
   return nextConnect<APIRequestType, NextApiResponse>({
     //-- API error handling --//
-    onError(error: Error, req, res) {
-      // An error occurred
-      // Check if it was a custom error
-      if (error instanceof BaseError) {
-        // Yes it was, return the error message
-        res.status(error.status).json(error.toJSON());
-        return;
+    onError(error: Error | Error[], req, res) {
+      // An error was thrown, initialise the response object
+      const response = { errors: <ErrorJSON[]>[] };
+
+      // Check if it was an array of errors
+      if (Array.isArray(error)) {
+        // Handle the errors
+        error.forEach((err) => {
+          response.errors.push(...handleError(err));
+        });
+      } else {
+        // Handle the error
+        response.errors.push(...handleError(error));
       }
 
-      // Check if it was a zod error
-      if (error instanceof ZodError) {
-        // We got a zod error
-        const err: BaseError = handleZodError(error);
-
-        // Return the error message
-        res.status(err.status).json(err.toJSON());
-        return;
-      }
-
-      // Check if it was a prisma error
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        // We got a prisma error
-        const err: BaseError = handlePrismaError(error);
-
-        // Return the error message
-        res.status(err.status).json(err.toJSON());
-        return;
-      }
-
-      // Unknown error
-      console.error(error);
-      res.status(500);
+      // Return the response
+      res.status(400).json(response);
     },
     onNoMatch(req, res) {
       res.status(405).json({ error: `Method ${req.method} not allowed` });

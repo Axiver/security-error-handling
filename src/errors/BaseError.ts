@@ -4,6 +4,13 @@
  * 2000 - 2999: Query errors
  */
 
+//-- Type definitions --//
+export type ErrorJSON = {
+  status: number;
+  code: number;
+  error: string;
+};
+
 /**
  * Do not throw this error class directly.
  * Build on top of this error class instead.
@@ -25,7 +32,7 @@ export class BaseError extends Error {
     return {
       status: this.status,
       code: this.code,
-      error: this.message,
+      detail: this.message,
     };
   }
 }
