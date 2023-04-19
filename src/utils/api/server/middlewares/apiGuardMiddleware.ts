@@ -23,8 +23,6 @@ async function validateAccessToken(userId: string, token: string) {
     },
   });
 
-  console.log({ accessToken });
-
   // Check if the token is valid
   return validateToken({ userId, token: accessToken });
 }

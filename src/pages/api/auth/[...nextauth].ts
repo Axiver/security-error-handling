@@ -36,12 +36,12 @@ export const authOptions: NextAuthOptions = {
       }
 
       // Access token has expired, try to update it
-      const newAccesstoken = await authHandler.refreshAccessToken(token.user.id, token.accessToken, token.refreshToken);
+      const newTokens = await authHandler.refreshAccessToken(token.user.id, token.accessToken, token.refreshToken);
 
       // Construct result object
       const result: JWT = {
         ...token,
-        ...newAccesstoken,
+        ...newTokens,
       };
 
       return result;
