@@ -93,6 +93,28 @@ function handleError($error: Error): ErrorJSON[] {
   return [new BaseError().toJSON()];
 }
 
+/**
+ * Obtains the status code to be returned
+ * @param errors An array of errors
+ * @returns The status code
+ */
+function getStatusCode(errors: ErrorJSON[]) {
+  // Check if the status code of all errors in the array are the same
+  const status = errors[0].status;
+
+  // Iterate through the errors
+  for (let i = 1; i < errors.length; i++) {
+    // Check if the status code is the same
+    if (errors[i].status !== status) {
+      // The status codes are not the same
+      return 400;
+    }
+  }
+
+  // The status codes are the same
+  return status;
+}
+
 export default (options?: APIHandlerOptions) => {
   // Return the next-connect handler
   return nextConnect<APIRequestType, NextApiResponse>({
@@ -112,8 +134,11 @@ export default (options?: APIHandlerOptions) => {
         response.errors.push(...handleError(error));
       }
 
+      // Determine the status code to be returned
+      const status = getStatusCode(response.errors);
+
       // Return the response
-      res.status(400).json(response);
+      res.status(status).json(response);
     },
     onNoMatch(req, res) {
       res.status(405).json({ error: `Method ${req.method} not allowed` });
