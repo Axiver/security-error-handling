@@ -32,14 +32,17 @@ function handleZodError(error: ZodError) {
       if (err.received === "undefined") {
         // Yes it was, return a param error
         result.push(new ParamRequiredError(err.path[0].toString()).toJSON());
+        continue;
       }
 
       // Return a param type error
       result.push(new ParamTypeError(err.path[0].toString(), err.expected, err.received).toJSON());
+      continue;
     }
 
     // Unrecognised zod error
     result.push(new ParamError().toJSON());
+    continue;
   }
 
   return result;

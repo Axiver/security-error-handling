@@ -8,7 +8,7 @@
 export type ErrorJSON = {
   status: number;
   code: number;
-  error: string;
+  detail: string;
 };
 
 /**
