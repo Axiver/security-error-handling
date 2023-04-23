@@ -13,10 +13,14 @@ export class QueryError extends ApiError {
  * Cannot find [...]
  */
 export class NotFoundError extends QueryError {
+  public static readonly status = 404;
+  public static readonly code: number = 2001;
+
   constructor(item: string) {
     super();
     this.message = `Cannot find ${item}`;
-    this.status = 2001;
+    this.status = NotFoundError.status;
+    this.code = NotFoundError.code;
   }
 }
 
