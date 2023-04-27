@@ -10,12 +10,9 @@ datasource db {
 model bookmarks {
   id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id        String  @db.Uuid
-  sell_post_id   BigInt
   notificationId String? @db.Uuid
-  listing        listing @relation(fields: [sell_post_id], references: [id], onDelete: Cascade)
+  sell_post_id   Int
   users          users   @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, sell_post_id])
 }
 
 model notifications {
@@ -24,7 +21,6 @@ model notifications {
   updated_at         DateTime? @default(now())
   originalPostStatus String
   sell_post_id       BigInt
-  listing            listing   @relation(fields: [sell_post_id], references: [id], onDelete: Cascade)
   users              users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
@@ -38,64 +34,73 @@ model sibkeys {
 
 model refresh_tokens {
   id            BigInt          @id @default(autoincrement())
-  token         String          @unique(map: "refresh_tokens_token_unique") @db.VarChar(255)
+  token         String          @unique(map: "refresh_tokens_token_unique")
   user_id       String          @db.Uuid
   revoked       Boolean         @default(false)
   created_at    DateTime        @default(now()) @db.Timestamptz(6)
   updated_at    DateTime?       @db.Timestamptz(6)
   expires_at    DateTime        @db.Timestamptz(6)
-  users         users           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   access_tokens access_tokens[]
+  users         users           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@unique([id, revoked])
   @@index([user_id])
   @@index([token])
-  @@unique([id, revoked])
 }
 
 model access_tokens {
   id             BigInt         @id @default(autoincrement())
-  token          String         @unique(map: "access_tokens_token_unique") @db.VarChar(255)
-  refresh_token  BigInt
+  token          String         @unique(map: "access_tokens_token_unique")
   user_id        String         @db.Uuid
   revoked        Boolean        @default(false)
   created_at     DateTime       @default(now()) @db.Timestamptz(6)
   updated_at     DateTime?      @db.Timestamptz(6)
   expires_at     DateTime       @db.Timestamptz(6)
+  refresh_token  BigInt
+  refresh_tokens refresh_tokens @relation(fields: [refresh_token, revoked], references: [id, revoked], onDelete: Cascade)
   users          users          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  refresh_tokens refresh_tokens @relation(fields: [refresh_token, revoked], references: [id, revoked], onDelete: Cascade, onUpdate: Cascade)
 
   @@index([user_id])
   @@index([token])
   @@index([refresh_token])
 }
 
+model offers {
+  id       Int        @id @default(autoincrement())
+  listing  BigInt
+  message  BigInt
+  amount   Float
+  accepted Boolean    @default(false)
+  listings listing?   @relation(fields: [listing], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  messages messages[]
+}
+
 model users {
-  id                             String           @unique(map: "userid_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  created_at                     DateTime         @default(now()) @db.Timestamptz(6)
-  name                           String           @db.VarChar(255)
-  password                       String           @db.VarChar(255)
-  phone                          String?          @db.VarChar(14)
-  email                          String           @unique @db.VarChar(255)
-  contact                        Int?             @db.SmallInt
-  bio                            String?          @db.VarChar(512)
+  id                             String           @id @unique(map: "userid_unique") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                           String
+  password                       String
+  email                          String           @unique
+  image                          String?
+  bio                            String?
   companyid                      Int
-  permissions                    Int              @default(0) @db.SmallInt
-  enabled                        Int              @default(1) @db.SmallInt
-  image                          String?          @db.VarChar
+  contact                        Int?
+  created_at                     DateTime         @default(now()) @db.Timestamptz(6)
+  enabled                        Int              @default(1)
+  permissions                    Int              @default(0)
+  phone                          String?
+  access_tokens                  access_tokens[]
+  bookmarks                      bookmarks[]
   clicks                         clicks[]
   listing                        listing[]
   messages                       messages[]
-  bookmarks                      bookmarks[]
   notifications                  notifications?
+  refresh_tokens                 refresh_tokens[]
   rooms_rooms_buyer_uuidTousers  rooms[]          @relation("rooms_buyer_uuidTousers")
   rooms_rooms_seller_uuidTousers rooms[]          @relation("rooms_seller_uuidTousers")
   companies                      companies        @relation(fields: [companyid], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_companies")
   users_contacts                 users_contacts?  @relation(fields: [contact], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_contacts")
   users_comments                 users_comments[]
-  refresh_tokens                 refresh_tokens[]
-  access_tokens                  access_tokens[]
 
-  @@id([id])
   @@index([contact], map: "fki_users_contacts")
   @@map("users")
 }
@@ -107,35 +112,32 @@ model advertisements {
   image       String?    @db.Uuid
   active      Boolean?   @default(false)
   updated_at  DateTime?  @default(now()) @db.Timestamptz(6)
-  description String?    @db.VarChar
-  link        String?    @db.VarChar
+  description String?
+  link        String?
   companies   companies? @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   clicks      clicks[]
 }
 
 model categories_parameters {
-  category                                             BigInt
-  parameter                                            BigInt
-  required                                             Boolean?  @default(true)
-  updated_at                                           DateTime? @default(now()) @db.Timestamptz(6)
-  created_at                                           DateTime? @default(now()) @db.Timestamptz(6)
-  category_categories_parameters_categoryTocategory    category  @relation("categories_parameters_categoryTocategory", fields: [category], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  parameter_categories_parameters_parameterToparameter parameter @relation("categories_parameters_parameterToparameter", fields: [parameter], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category   BigInt
+  parameter  BigInt
+  required   Boolean?  @default(true)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
 
   @@id([category, parameter])
 }
 
 model category {
-  id                                                             BigInt                  @id @default(autoincrement())
-  name                                                           String                  @unique @db.VarChar
-  description                                                    String                  @db.VarChar
-  image                                                          String?                 @db.Uuid
-  updated_at                                                     DateTime?               @default(now()) @db.Timestamptz(6)
-  created_at                                                     DateTime?               @default(now()) @db.Timestamptz(6)
-  active                                                         Boolean?                @default(true)
-  cross_section_image                                            String?                 @db.Uuid
-  categories_parameters_categories_parameters_categoryTocategory categories_parameters[] @relation("categories_parameters_categoryTocategory")
-  listing_listing_categoryTocategory                             listing[]               @relation("listing_categoryTocategory")
+  id                                 BigInt    @id @default(autoincrement())
+  name                               String    @unique
+  description                        String
+  image                              String?   @db.Uuid
+  updated_at                         DateTime? @default(now()) @db.Timestamptz(6)
+  created_at                         DateTime? @default(now()) @db.Timestamptz(6)
+  active                             Boolean?  @default(true)
+  cross_section_image                String?   @db.Uuid
+  listing_listing_categoryTocategory listing[] @relation("listing_categoryTocategory")
 }
 
 model clicks {
@@ -151,11 +153,11 @@ model clicks {
 model companies {
   id                 Int                  @unique(map: "companyid_unique") @default(autoincrement())
   created_at         DateTime?            @default(now()) @db.Timestamptz(6)
-  name               String               @unique @db.VarChar(255)
-  bio                String?              @db.VarChar(512)
-  website            String?              @db.VarChar(512)
-  visible            Int                  @default(1) @db.SmallInt
-  image              String?              @db.VarChar
+  name               String               @unique
+  bio                String?
+  website            String?
+  visible            Int                  @default(1)
+  image              String?
   advertisements     advertisements[]
   companies_comments companies_comments[]
   invite             invite[]
@@ -168,7 +170,7 @@ model companies_comments {
   id         Int       @id @default(autoincrement())
   created_at DateTime  @default(now()) @db.Timestamptz(6)
   companyid  Int
-  comments   String?   @db.VarChar(512)
+  comments   String?
   companies  companies @relation(fields: [companyid], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
@@ -177,24 +179,14 @@ model companies_log {
   created_at DateTime @default(now()) @db.Timestamptz(6)
   old_data   Json?
   new_data   Json?
-  table      String   @db.VarChar(100)
+  table      String
   actiontype dml_type
   origin     String?
 }
 
-model contents {
-  content_id BigInt     @id @default(autoincrement())
-  text       String?    @db.VarChar
-  file       String?    @db.VarChar
-  image      String?    @db.VarChar
-  created_at DateTime?  @default(now()) @db.Timestamptz(6)
-  offer      BigInt?
-  messages   messages[]
-}
-
 model datatype {
   id                                     BigInt      @id @default(autoincrement())
-  name                                   String      @db.VarChar
+  name                                   String
   created_at                             DateTime?   @default(now()) @db.Timestamptz(6)
   parameter_parameter_datatypeTodatatype parameter[] @relation("parameter_datatypeTodatatype")
 }
@@ -202,8 +194,8 @@ model datatype {
 model invite {
   id         Int       @id @default(autoincrement())
   created_at DateTime  @default(now()) @db.Timestamptz(6)
-  name       String    @db.VarChar(100)
-  email      String    @unique @db.VarChar(255)
+  name       String
+  email      String    @unique
   company    Int
   expiry     DateTime  @db.Timestamp(6)
   token      String    @unique @default("")
@@ -215,39 +207,36 @@ model invite_log {
   created_at DateTime @default(now()) @db.Timestamptz(6)
   old_data   Json?
   new_data   Json?
-  table      String   @db.VarChar(100)
+  table      String
   actiontype dml_type
   origin     String?
 }
 
 model listing {
-  id                                                                   BigInt                      @id @default(autoincrement())
-  name                                                                 String                      @db.VarChar
-  description                                                          String                      @db.VarChar
-  price                                                                Decimal                     @db.Decimal
-  unit_price                                                           Boolean?                    @default(false)
-  negotiable                                                           Boolean?                    @default(true)
-  category                                                             BigInt
-  type                                                                 BigInt
-  updated_at                                                           DateTime?                   @default(now()) @db.Timestamptz(6)
-  created_at                                                           DateTime?                   @default(now()) @db.Timestamptz(6)
-  open                                                                 Boolean?                    @default(true)
-  visibility                                                           Boolean?                    @default(true)
-  active                                                               Boolean?                    @default(true)
-  owner                                                                String                      @db.Uuid
-  bookmarks                                                            bookmarks[]
-  notifications                                                        notifications[]
-  category_listing_categoryTocategory                                  category                    @relation("listing_categoryTocategory", fields: [category], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users                                                                users                       @relation(fields: [owner], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  listing_type                                                         listing_type                @relation(fields: [type], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  listings_images_listings_images_listingTolisting                     listings_images[]           @relation("listings_images_listingTolisting")
-  listings_parameters_value_listings_parameters_value_listingTolisting listings_parameters_value[] @relation("listings_parameters_value_listingTolisting")
-  rooms                                                                rooms[]
+  id                                               BigInt            @id @default(autoincrement())
+  name                                             String
+  description                                      String
+  price                                            Decimal           @db.Decimal
+  unit_price                                       Boolean?          @default(false)
+  negotiable                                       Boolean           @default(false)
+  category                                         BigInt
+  type                                             BigInt
+  updated_at                                       DateTime?         @default(now()) @db.Timestamptz(6)
+  created_at                                       DateTime?         @default(now()) @db.Timestamptz(6)
+  owner                                            String            @db.Uuid
+  archived                                         Boolean           @default(false)
+  deleted_at                                       DateTime?         @db.Timestamptz(6)
+  category_listing_categoryTocategory              category          @relation("listing_categoryTocategory", fields: [category], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                                            users             @relation(fields: [owner], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  listing_type                                     listing_type      @relation(fields: [type], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  listings_images_listings_images_listingTolisting listings_images[] @relation("listings_images_listingTolisting")
+  rooms                                            rooms[]
+  offers                                           offers[]
 }
 
 model listing_type {
   id         BigInt    @id @default(autoincrement())
-  name       String    @db.VarChar
+  name       String
   created_at DateTime? @default(now()) @db.Timestamptz(6)
   listing    listing[]
 }
@@ -262,48 +251,46 @@ model listings_images {
 }
 
 model listings_parameters_value {
-  listing                                                  BigInt
-  parameter                                                BigInt
-  value                                                    String    @db.VarChar
-  updated_at                                               DateTime? @default(now()) @db.Timestamptz(6)
-  created_at                                               DateTime? @default(now()) @db.Timestamptz(6)
-  listing_listings_parameters_value_listingTolisting       listing   @relation("listings_parameters_value_listingTolisting", fields: [listing], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  parameter_listings_parameters_value_parameterToparameter parameter @relation("listings_parameters_value_parameterToparameter", fields: [parameter], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  listing    BigInt
+  parameter  BigInt
+  value      String
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
 
   @@id([listing, parameter], map: "listings_parameters_values_pkey")
 }
 
 model messages {
-  id           BigInt    @id @default(autoincrement())
-  content      BigInt?
-  profile_uuid String?   @db.Uuid
-  room_id      BigInt?
-  status       String?   @db.VarChar
-  created_at   DateTime? @default(now()) @db.Timestamptz(6)
-  contents     contents? @relation(fields: [content], references: [content_id], onDelete: NoAction, onUpdate: NoAction)
-  users        users?    @relation(fields: [profile_uuid], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  rooms        rooms?    @relation(fields: [room_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                 BigInt       @id @default(autoincrement())
+  content            String
+  content_type       content_type
+  offer              Int?
+  author             String       @db.Uuid
+  room               BigInt
+  read               Boolean      @default(false)
+  created_at         DateTime     @default(now()) @db.Timestamptz(6)
+  users              users        @relation(fields: [author], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rooms              rooms        @relation(fields: [room], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  offers             offers?      @relation(fields: [offer], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model parameter {
-  id                                                                       BigInt                      @id(map: "paramter_pkey") @default(autoincrement())
-  name                                                                     String                      @unique @db.VarChar
-  display_name                                                             String?                     @db.VarChar
-  type                                                                     BigInt
-  datatype                                                                 BigInt
-  updated_at                                                               DateTime?                   @default(now()) @db.Timestamptz(6)
-  created_at                                                               DateTime?                   @default(now()) @db.Timestamptz(6)
-  active                                                                   Boolean?                    @default(true)
-  categories_parameters_categories_parameters_parameterToparameter         categories_parameters[]     @relation("categories_parameters_parameterToparameter")
-  listings_parameters_value_listings_parameters_value_parameterToparameter listings_parameters_value[] @relation("listings_parameters_value_parameterToparameter")
-  datatype_parameter_datatypeTodatatype                                    datatype                    @relation("parameter_datatypeTodatatype", fields: [datatype], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  parameter_type                                                           parameter_type              @relation(fields: [type], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  parameter_choices_parameter_choices_parameterToparameter                 parameter_choices?          @relation("parameter_choices_parameterToparameter")
+  id                                                       BigInt             @id(map: "paramter_pkey") @default(autoincrement())
+  name                                                     String             @unique
+  display_name                                             String?
+  type                                                     BigInt
+  datatype                                                 BigInt
+  updated_at                                               DateTime?          @default(now()) @db.Timestamptz(6)
+  created_at                                               DateTime?          @default(now()) @db.Timestamptz(6)
+  active                                                   Boolean?           @default(true)
+  datatype_parameter_datatypeTodatatype                    datatype           @relation("parameter_datatypeTodatatype", fields: [datatype], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parameter_type                                           parameter_type     @relation(fields: [type], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parameter_choices_parameter_choices_parameterToparameter parameter_choices? @relation("parameter_choices_parameterToparameter")
 }
 
 model parameter_choices {
   parameter                                        BigInt    @id
-  choice                                           String[]  @db.VarChar
+  choice                                           String[]
   updated_at                                       DateTime? @default(now()) @db.Timestamptz(6)
   created_at                                       DateTime? @default(now()) @db.Timestamptz(6)
   parameter_parameter_choices_parameterToparameter parameter @relation("parameter_choices_parameterToparameter", fields: [parameter], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -311,34 +298,34 @@ model parameter_choices {
 
 model parameter_type {
   id         BigInt      @id @default(autoincrement())
-  name       String      @db.VarChar
+  name       String
   created_at DateTime?   @default(now()) @db.Timestamptz(6)
   parameter  parameter[]
 }
 
 model rooms {
   id                             BigInt     @id @default(autoincrement())
-  seller_uuid                    String?    @db.Uuid
-  buyer_uuid                     String?    @db.Uuid
-  created_at                     DateTime?  @default(now()) @db.Timestamptz(6)
-  listing_id                     BigInt?
+  seller                         String     @db.Uuid
+  buyer                          String     @db.Uuid
+  created_at                     DateTime   @default(now()) @db.Timestamptz(6)
+  listing                        BigInt
+  users_rooms_buyer_uuidTousers  users      @relation("rooms_buyer_uuidTousers", fields: [buyer], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  listings                       listing    @relation(fields: [listing], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_rooms_seller_uuidTousers users      @relation("rooms_seller_uuidTousers", fields: [seller], references: [id], onDelete: Cascade, onUpdate: NoAction)
   messages                       messages[]
-  users_rooms_buyer_uuidTousers  users?     @relation("rooms_buyer_uuidTousers", fields: [buyer_uuid], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  listing                        listing?   @relation(fields: [listing_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users_rooms_seller_uuidTousers users?     @relation("rooms_seller_uuidTousers", fields: [seller_uuid], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model users_comments {
   id         Int      @id @default(autoincrement())
   created_at DateTime @default(now()) @db.Timestamptz(6)
   userid     String   @db.Uuid
-  comments   String?  @db.VarChar(512)
+  comments   String?
   users      users    @relation(fields: [userid], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model users_contacts {
   id             Int     @unique(map: "users_contactsid_unique") @default(autoincrement())
-  contact_method String  @db.VarChar(255)
+  contact_method String
   users          users[]
 
   @@id([id, contact_method])
@@ -348,4 +335,11 @@ enum dml_type {
   INSERT
   UPDATE
   DELETE
+}
+
+enum content_type {
+  text
+  file
+  image
+  offer
 }
